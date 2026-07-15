@@ -1,0 +1,1 @@
+"""Google connector tests."""

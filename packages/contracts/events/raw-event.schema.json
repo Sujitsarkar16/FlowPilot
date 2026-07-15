@@ -1,0 +1,31 @@
+{
+  "title": "PulseOS Raw Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "user_id", "source", "event_type", "occurred_at", "payload", "trust_level", "idempotency_key"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "id": {"type": "string", "minLength": 1},
+    "user_id": {"type": "string", "minLength": 1},
+    "source": {"enum": ["manual", "gmail", "webhook", "banking_mock", "system"]},
+    "event_type": {"type": "string", "minLength": 1},
+    "actor": {"type": "string"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "payload": {"type": "object"},
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "storage_ref"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "storage_ref": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "trust_level": {"enum": ["external", "trusted", "system"]},
+    "idempotency_key": {"type": "string", "minLength": 1}
+  }
+}

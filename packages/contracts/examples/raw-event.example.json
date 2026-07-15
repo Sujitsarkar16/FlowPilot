@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "id": "evt_9348",
+  "user_id": "usr_demo",
+  "source": "gmail",
+  "event_type": "email.received",
+  "actor": "airline@example.com",
+  "occurred_at": "2026-07-15T09:30:00+05:30",
+  "payload": {"subject": "Flight confirmed", "body_ref": "obj://email/9348"},
+  "attachments": [{"id": "att_1", "name": "ticket.pdf", "storage_ref": "obj://attachments/att_1"}],
+  "trust_level": "external",
+  "idempotency_key": "gmail:message:abc"
+}

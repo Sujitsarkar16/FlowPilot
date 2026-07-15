@@ -1,0 +1,17 @@
+{
+  "title": "PulseOS Life Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "raw_event_id", "type", "confidence", "importance", "requires_follow_up", "evidence_event_ids"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "id": {"type": "string", "minLength": 1},
+    "raw_event_id": {"type": "string", "minLength": 1},
+    "type": {"enum": ["travel_booked", "travel_changed", "client_opportunity", "client_confirmed", "salary_credited", "subscription_renewal", "generic_important_event"]},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "importance": {"enum": ["low", "medium", "high"]},
+    "requires_follow_up": {"type": "boolean"},
+    "entities": {"type": "object"},
+    "evidence_event_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  }
+}

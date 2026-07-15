@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "id": "plan_bengaluru_001",
+  "event_id": "life_9348",
+  "objective": "Prepare Bengaluru trip",
+  "status": "waiting_approval",
+  "actions": [{
+    "id": "act_family",
+    "type": "send_family_notification",
+    "connector": "telegram",
+    "input": {"message_ref": "obj://drafts/family"},
+    "status": "waiting_approval",
+    "risk_level": "yellow",
+    "policy_decision": "approval_required",
+    "approval_status": "pending",
+    "depends_on": []
+  }]
+}

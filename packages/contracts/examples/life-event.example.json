@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "id": "life_9348",
+  "raw_event_id": "evt_9348",
+  "type": "travel_booked",
+  "confidence": 0.97,
+  "importance": "high",
+  "requires_follow_up": true,
+  "entities": {"destination": "Bengaluru", "flight_number": "6E-123"},
+  "evidence_event_ids": ["evt_9348"]
+}

@@ -1,0 +1,43 @@
+# Local environments and secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Agent and internal planning metadata
+.kiro/
+PULSEOS_IMPLEMENTATION_TASKS.md
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# JavaScript
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Python tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+
+# Editor and OS
+.vscode/
+.idea/
+.DS_Store
+
+# Temporary upstream inspection clone
+.ponytail-upstream/

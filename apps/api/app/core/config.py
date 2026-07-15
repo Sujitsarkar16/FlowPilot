@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     )
 
     environment: Literal["development", "test", "production"] = Field(
-        default="development", validation_alias="PULSEOS_ENV"
+        default="development", validation_alias="FLOWPILOT_ENV"
     )
-    database_url: str = "postgresql+asyncpg://pulseos:pulseos@localhost:5432/pulseos"
+    database_url: str = "postgresql+asyncpg://flowpilot:flowpilot@localhost:5432/flowpilot"
     database_pool_size: int = Field(default=5, ge=1, le=50)
     database_max_overflow: int = Field(default=10, ge=0, le=50)
     cors_origins: tuple[AnyHttpUrl, ...] = ()

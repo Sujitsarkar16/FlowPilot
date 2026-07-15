@@ -3,9 +3,9 @@ requires = ["setuptools==75.8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pulseos-api"
+name = "flowpilot-api"
 version = "0.1.0"
-description = "PulseOS API foundation"
+description = "FlowPilot API foundation"
 requires-python = ">=3.11"
 dependencies = [
   "alembic==1.14.1",

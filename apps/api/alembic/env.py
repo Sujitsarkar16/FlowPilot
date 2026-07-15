@@ -1,4 +1,4 @@
-"""Alembic environment for the asynchronous PulseOS database."""
+"""Alembic environment for the asynchronous FlowPilot database."""
 
 import asyncio
 from logging.config import fileConfig

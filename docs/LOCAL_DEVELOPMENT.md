@@ -1,6 +1,6 @@
 # Local development
 
-PulseOS runs a Next.js web app, FastAPI API, and local PostgreSQL service. All commands below use PowerShell on Windows.
+FlowPilot runs a Next.js web app, FastAPI API, and local PostgreSQL service. All commands below use PowerShell on Windows.
 
 ## Prerequisites
 
@@ -23,10 +23,10 @@ The checked-in examples contain no secrets. Add connector or authentication cred
 ```powershell
 docker compose up -d postgres
 docker compose ps
-docker compose exec postgres pg_isready -U pulseos -d pulseos
+docker compose exec postgres pg_isready -U flowpilot -d flowpilot
 ```
 
-The local PostgreSQL URL is `postgresql+asyncpg://pulseos:pulseos@localhost:5432/pulseos`. To inspect development email later, start optional Mailpit with `docker compose --profile mail up -d mailpit`, then open `http://localhost:8025`.
+The local PostgreSQL URL is `postgresql+asyncpg://flowpilot:flowpilot@localhost:5432/flowpilot`. To inspect development email later, start optional Mailpit with `docker compose --profile mail up -d mailpit`, then open `http://localhost:8025`.
 
 Equivalent Make targets are `make dev-api`, `make dev-web`, `make dev-db`, `make dev-mail`, `make logs`, and `make stop`. Run `make dev-api` and `make dev-web` in separate terminals because both commands stay active.
 

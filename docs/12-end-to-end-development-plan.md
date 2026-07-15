@@ -2,7 +2,7 @@
 
 ## Objective and order of delivery
 
-Deliver a demo-safe PulseOS control centre: a complete Travel Autopilot first, then Client Launch and simulated Salary workflows. Build the durable, policy-governed path before adding live connectors or broader automation.
+Deliver a demo-safe FlowPilot control centre: a complete Travel Autopilot first, then Client Launch and simulated Salary workflows. Build the durable, policy-governed path before adding live connectors or broader automation.
 
 ## Current baseline
 

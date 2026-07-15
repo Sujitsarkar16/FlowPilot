@@ -1,4 +1,4 @@
-"""PulseOS API application entry point."""
+"""FlowPilot API application entry point."""
 
 import logging
 from collections.abc import AsyncIterator
@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     """Create the API without forcing a database connection during liveness checks."""
     settings = get_settings()
-    api = FastAPI(title="PulseOS API", version="0.2.0", lifespan=lifespan)
+    api = FastAPI(title="FlowPilot API", version="0.2.0", lifespan=lifespan)
     api.state.rate_limiter = rate_limiter_from_settings(settings)
     api.add_middleware(RequestContextMiddleware)
     api.add_middleware(

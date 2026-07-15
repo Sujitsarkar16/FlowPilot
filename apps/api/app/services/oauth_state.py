@@ -47,7 +47,7 @@ class OAuthStateService:
                 "jti": nonce,
                 "iat": now,
                 "exp": expires_at,
-                "iss": "pulseos-oauth",
+                "iss": "flowpilot-oauth",
             },
             self._signing_key,
             algorithm="HS256",
@@ -60,7 +60,7 @@ class OAuthStateService:
                 state,
                 self._signing_key,
                 algorithms=["HS256"],
-                issuer="pulseos-oauth",
+                issuer="flowpilot-oauth",
                 options={"require": ["exp", "iat", "iss", "jti", "sub", "provider"]},
             )
         except InvalidTokenError as error:

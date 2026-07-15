@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://pulseos.dev/contracts/standing-order.schema.json",
-  "title": "PulseOS Compiled Standing Order",
+  "$id": "https://flowpilot.dev/contracts/standing-order.schema.json",
+  "title": "FlowPilot Compiled Standing Order",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "trigger_event_types", "action_templates", "explanation"],

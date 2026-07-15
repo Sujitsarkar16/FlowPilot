@@ -1,6 +1,6 @@
-# PulseOS build documentation
+# FlowPilot build documentation
 
-This folder is the implementation source of truth for the PulseOS hackathon MVP. It turns the product brief in [`../Architecture.md`](../Architecture.md) into buildable contracts, constraints, and delivery steps.
+This folder is the implementation source of truth for the FlowPilot demo MVP. It turns the product brief in [`../Architecture.md`](../Architecture.md) into buildable contracts, constraints, and delivery steps.
 
 ## Read in this order
 
@@ -14,7 +14,7 @@ This folder is the implementation source of truth for the PulseOS hackathon MVP.
 8. [Harness engineering](08-harness-engineering.md) — fixtures, evaluations, observability, and release gates.
 9. [Vibe coding workflow](09-vibe-coding-workflow.md) — small, safe implementation loops for humans and coding agents.
 10. [Delivery plan](10-delivery-plan.md) — build order and demo path.
-11. [Ponytail integration](11-ponytail-integration.md) — minimal-development rules and their PulseOS safety boundary.
+11. [Ponytail integration](11-ponytail-integration.md) — minimal-development rules and their FlowPilot safety boundary.
 12. [End-to-end development plan](12-end-to-end-development-plan.md) — ordered milestones, dependencies, exit gates, and first ticket.
 13. [Frontend architecture — M1](13-frontend-architecture.md) — initial App Router structure and evolution triggers.
 

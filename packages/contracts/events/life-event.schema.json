@@ -1,5 +1,5 @@
 {
-  "title": "PulseOS Life Event",
+  "title": "FlowPilot Life Event",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "id", "raw_event_id", "type", "confidence", "importance", "requires_follow_up", "evidence_event_ids"],

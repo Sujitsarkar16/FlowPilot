@@ -99,7 +99,7 @@ class RuntimeConnector(Connector):
         connector = await self._provider(action, event)
         if action.action_type.endswith("create_folder"):
             payload = {
-                "folder_name": self._text(input, "folder_name") or f"PulseOS - {event.summary}",
+                "folder_name": self._text(input, "folder_name") or f"FlowPilot - {event.summary}",
             }
         elif action.action_type in {
             "travel.save_ticket",
@@ -133,7 +133,7 @@ class RuntimeConnector(Connector):
         input: Mapping[str, Any],
     ) -> ConnectorExecutionResult:
         connector = await self._provider(action, event)
-        name = self._text(input, "repository_name") or f"pulseos-{str(action.id)[:8]}"
+        name = self._text(input, "repository_name") or f"flowpilot-{str(action.id)[:8]}"
         documents = (await self._dependency_output(action.id, "client.generate_documents")).get(
             "documents", []
         )
@@ -182,7 +182,7 @@ class RuntimeConnector(Connector):
                 f"Hi {client}, your workspace, proposal, and invoice template are ready. "
                 f"Suggested kickoff: {self._kickoff_start(event)}."
             )
-        return "PulseOS update"
+        return "FlowPilot update"
 
     async def _weather(
         self,

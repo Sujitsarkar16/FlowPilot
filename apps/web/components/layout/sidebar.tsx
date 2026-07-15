@@ -26,7 +26,7 @@ export function Sidebar() {
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-4 md:flex">
       <Link
-        aria-label="PulseOS dashboard home"
+        aria-label="FlowPilot dashboard home"
         className="px-3 py-3 text-xl font-bold text-slate-950"
         href="/dashboard"
       >

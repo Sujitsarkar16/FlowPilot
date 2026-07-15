@@ -17,7 +17,7 @@ from app.schemas.connector import (
 )
 
 AccessTokenResolver: TypeAlias = Callable[[], str | Awaitable[str]]
-_MARKER_KEY = "pulseos_idempotency_key"
+_MARKER_KEY = "flowpilot_idempotency_key"
 _FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 

@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:16.6-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-pulseos}
-      POSTGRES_USER: ${POSTGRES_USER:-pulseos}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pulseos}
+      POSTGRES_DB: ${POSTGRES_DB:-flowpilot}
+      POSTGRES_USER: ${POSTGRES_USER:-flowpilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowpilot}
     ports:
       - "5432:5432"
     volumes:

@@ -1,5 +1,5 @@
 {
-  "title": "PulseOS Action Result",
+  "title": "FlowPilot Action Result",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "action_id", "status", "output", "rollback_supported"],

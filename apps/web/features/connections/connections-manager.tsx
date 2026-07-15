@@ -160,7 +160,7 @@ export function ConnectionsManager() {
           Connections
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Choose the services PulseOS can use. Review the requested permissions before you connect.
+          Choose the services FlowPilot can use. Review the requested permissions before you connect.
           Credentials stay encrypted and are never shown here.
         </p>
       </div>
@@ -279,7 +279,7 @@ export function ConnectionsManager() {
       <ConfirmDialog
         busy={busy === `disconnect-${disconnectTarget?.id}`}
         confirmLabel="Disconnect"
-        description={`This will revoke PulseOS access to ${disconnectTarget?.provider_account_id ?? "this account"}. You can reconnect later.`}
+        description={`This will revoke FlowPilot access to ${disconnectTarget?.provider_account_id ?? "this account"}. You can reconnect later.`}
         destructive
         onCancel={() => setDisconnectTarget(null)}
         onConfirm={() => void disconnect()}

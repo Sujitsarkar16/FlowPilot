@@ -1,14 +1,14 @@
 # Ponytail integration
 
-[Ponytail](https://github.com/DietrichGebert/ponytail) is a development-agent skill, not a PulseOS runtime dependency. It is installed for this Kiro workspace through `.kiro/steering/ponytail.md`; Kiro loads that steering file for every coding task.
+[Ponytail](https://github.com/DietrichGebert/ponytail) is a development-agent skill, not a FlowPilot runtime dependency. It is installed for this Kiro workspace through `.kiro/steering/ponytail.md`; Kiro loads that steering file for every coding task.
 
-## Why it fits PulseOS
+## Why it fits FlowPilot
 
-Ponytail’s ladder—reuse first, platform features before dependencies, then the smallest correct change—keeps a hackathon build focused on one reliable vertical slice. It is especially useful for avoiding premature connectors, queue infrastructure, component libraries, and abstraction layers.
+Ponytail’s ladder—reuse first, platform features before dependencies, then the smallest correct change—keeps a demo build focused on one reliable vertical slice. It is especially useful for avoiding premature connectors, queue infrastructure, component libraries, and abstraction layers.
 
 ## Non-negotiable exception
 
-Its minimalism never removes PulseOS safeguards. Model-output validation, event idempotency, tenant isolation, policy evaluation, approval versioning, red-action confirmation, audit logging, secret redaction, and accessible UI states remain mandatory.
+Its minimalism never removes FlowPilot safeguards. Model-output validation, event idempotency, tenant isolation, policy evaluation, approval versioning, red-action confirmation, audit logging, secret redaction, and accessible UI states remain mandatory.
 
 ## Initial implementation decisions
 

@@ -1,4 +1,4 @@
-"""Initial PulseOS Phase-B persistence schema.
+"""Initial FlowPilot Phase-B persistence schema.
 
 Revision ID: 20260715_0001
 Revises: None

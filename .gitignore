@@ -10,7 +10,7 @@ credentials/
 
 # Agent and internal planning metadata
 .kiro/
-PULSEOS_IMPLEMENTATION_TASKS.md
+FLOWPILOT_IMPLEMENTATION_TASKS.md
 
 # Python
 .venv/

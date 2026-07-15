@@ -1,5 +1,5 @@
 {
-  "title": "PulseOS Action Plan",
+  "title": "FlowPilot Action Plan",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "id", "event_id", "objective", "status", "actions"],

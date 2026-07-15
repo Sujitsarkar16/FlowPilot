@@ -83,8 +83,10 @@ class GitHubRepositoryConnector(Connector):
         if response.status_code == 404:
             return False
         payload = self._payload(response)
-        return response.is_success and str(payload.get("id")) == repository_id and not payload.get(
-            "archived", False
+        return (
+            response.is_success
+            and str(payload.get("id")) == repository_id
+            and not payload.get("archived", False)
         )
 
     async def rollback(
@@ -92,7 +94,9 @@ class GitHubRepositoryConnector(Connector):
     ) -> ConnectorRollbackResult:
         full_name = (rollback_payload or {}).get("full_name")
         if not isinstance(full_name, str) or not full_name:
-            raise ConnectorExecutionError(ConnectorErrorCategory.VALIDATION, "Repository is required")
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.VALIDATION, "Repository is required"
+            )
         response = await self._request("PATCH", f"/repos/{full_name}", json={"archived": True})
         payload = self._payload(response)
         if not response.is_success or payload.get("archived") is not True:
@@ -111,7 +115,9 @@ class GitHubRepositoryConnector(Connector):
         description = sanitize_untrusted_content(request.description, max_chars=350).text
         endpoint = f"/orgs/{request.owner}/repos" if request.owner else "/user/repos"
         response = await self._request(
-            "POST", endpoint, json={"name": request.name, "description": description, "private": request.private}
+            "POST",
+            endpoint,
+            json={"name": request.name, "description": description, "private": request.private},
         )
         payload = self._payload(response)
         if not response.is_success:
@@ -119,7 +125,9 @@ class GitHubRepositoryConnector(Connector):
         repository_id = payload.get("id")
         full_name = payload.get("full_name")
         if repository_id is None or not isinstance(full_name, str) or not full_name:
-            raise ConnectorExecutionError(ConnectorErrorCategory.RETRYABLE, "GitHub returned an invalid repository")
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.RETRYABLE, "GitHub returned an invalid repository"
+            )
         return _Repository(
             identifier=str(repository_id),
             full_name=full_name,
@@ -133,11 +141,11 @@ class GitHubRepositoryConnector(Connector):
         marker = hashlib.sha256(idempotency_key.encode()).hexdigest()
         body = request.readme or f"# {request.name}\n\n{request.description}".strip()
         content = sanitize_untrusted_content(body, max_chars=20_000).text
-        encoded = base64.b64encode(f"{content}\n\n<!-- pulseos:{marker} -->\n".encode()).decode()
+        encoded = base64.b64encode(f"{content}\n\n<!-- flowpilot:{marker} -->\n".encode()).decode()
         response = await self._request(
             "PUT",
             f"/repos/{repository.full_name}/contents/README.md",
-            json={"message": "Initialize repository with PulseOS README", "content": encoded},
+            json={"message": "Initialize repository with FlowPilot README", "content": encoded},
         )
         if not response.is_success:
             self._raise_response(response, "GitHub README creation failed")
@@ -151,7 +159,7 @@ class GitHubRepositoryConnector(Connector):
         if not response.is_success:
             self._raise_response(response, "GitHub repository lookup failed")
         repositories = self._payload_list(response)
-        marker = f"pulseos:{hashlib.sha256(idempotency_key.encode()).hexdigest()}"
+        marker = f"flowpilot:{hashlib.sha256(idempotency_key.encode()).hexdigest()}"
         for repository in repositories:
             if repository.get("name") != request.name:
                 continue
@@ -194,7 +202,6 @@ class GitHubRepositoryConnector(Connector):
             rollback_payload={"full_name": repository.full_name},
         )
 
-
     async def _request(
         self, method: str, path: str, *, json: dict[str, Any] | None = None
     ) -> httpx.Response:
@@ -214,7 +221,9 @@ class GitHubRepositoryConnector(Connector):
                     },
                 )
         except httpx.HTTPError:
-            raise ConnectorExecutionError(ConnectorErrorCategory.RETRYABLE, "GitHub request failed") from None
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.RETRYABLE, "GitHub request failed"
+            ) from None
 
     @staticmethod
     def _payload(response: httpx.Response) -> dict[str, Any]:
@@ -230,7 +239,11 @@ class GitHubRepositoryConnector(Connector):
             payload = response.json()
         except ValueError:
             return []
-        return [item for item in payload if isinstance(item, dict)] if isinstance(payload, list) else []
+        return (
+            [item for item in payload if isinstance(item, dict)]
+            if isinstance(payload, list)
+            else []
+        )
 
     @staticmethod
     def _raise_response(response: httpx.Response, message: str) -> None:

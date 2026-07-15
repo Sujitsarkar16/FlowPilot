@@ -16,7 +16,7 @@ const EXAMPLES = [
 ] as const;
 
 const HINTS: { value: string; label: string }[] = [
-  { value: "", label: "Let PulseOS decide" },
+  { value: "", label: "Let FlowPilot decide" },
   { value: "travel", label: "Travel" },
   { value: "client", label: "Client opportunity" },
   { value: "salary", label: "Salary / finance" },
@@ -64,7 +64,7 @@ export function ManualEventForm() {
           Add an event
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Paste an email or describe what happened. PulseOS interprets it and prepares a plan you
+          Paste an email or describe what happened. FlowPilot interprets it and prepares a plan you
           can review.
         </p>
       </div>

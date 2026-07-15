@@ -1,4 +1,4 @@
-"""PulseOS SQLAlchemy persistence models."""
+"""FlowPilot SQLAlchemy persistence models."""
 
 from app.models.action import Action, ActionDependency
 from app.models.approval import Approval

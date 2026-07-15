@@ -9,7 +9,7 @@ from collections.abc import Iterable
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-_CONTEXT = b"pulseos:connector-secret:v1"
+_CONTEXT = b"flowpilot:connector-secret:v1"
 
 
 class SecretDecryptionError(ValueError):

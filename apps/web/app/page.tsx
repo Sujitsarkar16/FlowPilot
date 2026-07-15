@@ -125,7 +125,7 @@ export default function LifeFeedPage() {
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand-row">
-          <a className="brand" href="#top" aria-label="PulseOS home">
+          <a className="brand" href="#top" aria-label="FlowPilot home">
             pulse<span>OS</span>
           </a>
           <button
@@ -226,7 +226,7 @@ export default function LifeFeedPage() {
               </div>
             </section>
 
-            <dl className="metric-grid" aria-label="Today’s PulseOS summary">
+            <dl className="metric-grid" aria-label="Today’s FlowPilot summary">
               <div>
                 <dt>Events handled</dt>
                 <dd>3</dd>
@@ -351,7 +351,7 @@ export default function LifeFeedPage() {
                 <p className="approval-copy">
                   {approved
                     ? "The local demo has recorded your approval. A real API would now send this exact, versioned draft."
-                    : "PulseOS drafted this from your trip plan. It cannot send it until you approve the version shown here."}
+                    : "FlowPilot drafted this from your trip plan. It cannot send it until you approve the version shown here."}
                 </p>
                 {approved ? (
                   <Button className="button-secondary" onClick={() => setApproved(false)}>
@@ -548,7 +548,7 @@ export default function LifeFeedPage() {
                 <p className="eyebrow">Policy builder</p>
                 <h1 id="orders-title">Standing Orders</h1>
                 <p className="lede">
-                  Tell PulseOS what should happen repeatedly. It always shows the resulting
+                  Tell FlowPilot what should happen repeatedly. It always shows the resulting
                   boundaries before anything is saved.
                 </p>
               </div>
@@ -632,7 +632,7 @@ export default function LifeFeedPage() {
               <div>
                 <h2>What gets checked before every plan?</h2>
                 <p>
-                  PulseOS compares the event, current standing order, domain permission, budget, and
+                  FlowPilot compares the event, current standing order, domain permission, budget, and
                   any approval requirement. A plan is blocked when one of those checks does not
                   pass.
                 </p>
@@ -651,7 +651,7 @@ export default function LifeFeedPage() {
                 <p className="eyebrow">Safety controls</p>
                 <h1 id="autonomy-title">Autonomy Centre</h1>
                 <p className="lede">
-                  Choose where PulseOS can help automatically, and where it should always ask first.
+                  Choose where FlowPilot can help automatically, and where it should always ask first.
                 </p>
               </div>
               <Status tone="green">Level 2 autonomy</Status>
@@ -739,7 +739,7 @@ export default function LifeFeedPage() {
                 <p className="eyebrow">Trusted contacts</p>
                 <h2>Family messages stay in your hands</h2>
                 <p>
-                  PulseOS can draft updates for your Family group, but every send is still an
+                  FlowPilot can draft updates for your Family group, but every send is still an
                   explicit approval.
                 </p>
               </div>
@@ -760,7 +760,7 @@ export default function LifeFeedPage() {
                 <p className="eyebrow">Permission-aware context</p>
                 <h1 id="graph-title">Personal Graph</h1>
                 <p className="lede">
-                  A small, private map of the people and projects you have allowed PulseOS to use as
+                  A small, private map of the people and projects you have allowed FlowPilot to use as
                   context.
                 </p>
               </div>
@@ -813,7 +813,7 @@ export default function LifeFeedPage() {
             <section className="context-table">
               <div>
                 <p className="eyebrow">Context permissions</p>
-                <h2>What PulseOS can reference</h2>
+                <h2>What FlowPilot can reference</h2>
               </div>
               <div className="table-rows">
                 <div>

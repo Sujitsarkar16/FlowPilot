@@ -18,7 +18,7 @@ from app.schemas.connector import (
 )
 
 AccessTokenResolver: TypeAlias = Callable[[], str | Awaitable[str]]
-_MARKER_KEY = "pulseos_idempotency_key"
+_MARKER_KEY = "flowpilot_idempotency_key"
 
 
 class GoogleCalendarConnector(Connector):
@@ -53,7 +53,9 @@ class GoogleCalendarConnector(Connector):
         if end is None:
             end = start + timedelta(hours=1)
         if end <= start:
-            raise ConnectorExecutionError(ConnectorErrorCategory.VALIDATION, "end_at must follow start_at")
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.VALIDATION, "end_at must follow start_at"
+            )
         calendar_id = _optional_text(input, "calendar_id") or "primary"
         existing = await self._find_marked_event(calendar_id, idempotency_key)
         if existing:
@@ -91,13 +93,17 @@ class GoogleCalendarConnector(Connector):
         del action_id
         event_id, calendar_id, marker = _rollback_identity(rollback_payload)
         if event_id is None or marker is None:
-            return ConnectorRollbackResult(output={"rolled_back": False, "reason": "missing_marker"})
+            return ConnectorRollbackResult(
+                output={"rolled_back": False, "reason": "missing_marker"}
+            )
         response = await self._request("GET", self._event_url(calendar_id, event_id))
         if response.status_code == 404:
             return ConnectorRollbackResult(output={"rolled_back": True, "already_absent": True})
         _raise_for_status(response, "read calendar event for rollback")
         if not _marker_matches(_json_object(response), marker):
-            return ConnectorRollbackResult(output={"rolled_back": False, "reason": "marker_mismatch"})
+            return ConnectorRollbackResult(
+                output={"rolled_back": False, "reason": "marker_mismatch"}
+            )
         response = await self._request("DELETE", self._event_url(calendar_id, event_id))
         if response.status_code != 404:
             _raise_for_status(response, "delete calendar event")
@@ -112,7 +118,9 @@ class GoogleCalendarConnector(Connector):
         _raise_for_status(response, "find calendar event")
         items = _json_object(response).get("items")
         if not isinstance(items, list):
-            raise ConnectorExecutionError(ConnectorErrorCategory.PERMANENT, "invalid Calendar response")
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.PERMANENT, "invalid Calendar response"
+            )
         for item in items:
             if isinstance(item, Mapping) and _marker_matches(item, marker):
                 return _identifier(item, "id", "find calendar event")
@@ -127,9 +135,13 @@ class GoogleCalendarConnector(Connector):
             async with httpx.AsyncClient(timeout=10.0, transport=self._transport) as client:
                 return await client.request(method, url, headers=headers, **kwargs)
         except httpx.TimeoutException:
-            raise ConnectorExecutionError(ConnectorErrorCategory.RETRYABLE, "Google Calendar timed out") from None
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.RETRYABLE, "Google Calendar timed out"
+            ) from None
         except httpx.HTTPError:
-            raise ConnectorExecutionError(ConnectorErrorCategory.RETRYABLE, "Google Calendar request failed") from None
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.RETRYABLE, "Google Calendar request failed"
+            ) from None
 
     async def _access_token(self) -> str:
         try:
@@ -137,9 +149,13 @@ class GoogleCalendarConnector(Connector):
             if isawaitable(token):
                 token = await token
         except Exception:
-            raise ConnectorExecutionError(ConnectorErrorCategory.AUTHORIZATION, "Google access token unavailable") from None
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.AUTHORIZATION, "Google access token unavailable"
+            ) from None
         if not isinstance(token, str) or not token.strip():
-            raise ConnectorExecutionError(ConnectorErrorCategory.AUTHORIZATION, "Google access token unavailable")
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.AUTHORIZATION, "Google access token unavailable"
+            )
         return token
 
     def _events_url(self, calendar_id: str) -> str:
@@ -149,17 +165,26 @@ class GoogleCalendarConnector(Connector):
         return f"{self._events_url(calendar_id)}/{quote(event_id, safe='')}"
 
 
-def _result(event_id: str, calendar_id: str, marker: str, *, created: bool) -> ConnectorExecutionResult:
+def _result(
+    event_id: str, calendar_id: str, marker: str, *, created: bool
+) -> ConnectorExecutionResult:
     return ConnectorExecutionResult(
         output={"event_id": event_id, "calendar_id": calendar_id, "created": created},
-        rollback_payload={"event_id": event_id, "calendar_id": calendar_id, "idempotency_key": marker},
+        rollback_payload={
+            "event_id": event_id,
+            "calendar_id": calendar_id,
+            "idempotency_key": marker,
+        },
     )
 
 
 def _result_identity(result: ConnectorExecutionResult) -> tuple[str | None, str]:
     event_id = result.output.get("event_id")
     calendar_id = result.output.get("calendar_id", "primary")
-    return (event_id if isinstance(event_id, str) and event_id else None, calendar_id if isinstance(calendar_id, str) and calendar_id else "primary")
+    return (
+        event_id if isinstance(event_id, str) and event_id else None,
+        calendar_id if isinstance(calendar_id, str) and calendar_id else "primary",
+    )
 
 
 def _rollback_identity(payload: Mapping[str, Any] | None) -> tuple[str | None, str, str | None]:
@@ -184,32 +209,51 @@ def _marker_matches(event: Mapping[str, Any], marker: str) -> bool:
 def _timezone(input: Mapping[str, Any]) -> str:
     value = input.get("timezone", input.get("time_zone", "UTC"))
     if not isinstance(value, str) or not value:
-        raise ConnectorExecutionError(ConnectorErrorCategory.VALIDATION, "timezone must be an IANA timezone")
+        raise ConnectorExecutionError(
+            ConnectorErrorCategory.VALIDATION, "timezone must be an IANA timezone"
+        )
     try:
         ZoneInfo(value)
     except ZoneInfoNotFoundError:
         # Windows deployments may not ship the IANA database; Google resolves valid regional names.
         if value != "UTC" and not value.startswith(_IANA_REGIONS):
-            raise ConnectorExecutionError(ConnectorErrorCategory.VALIDATION, "timezone must be an IANA timezone") from None
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.VALIDATION, "timezone must be an IANA timezone"
+            ) from None
     return value
 
 
 _IANA_REGIONS = (
-    "Africa/", "America/", "Antarctica/", "Arctic/", "Asia/", "Atlantic/", "Australia/",
-    "Europe/", "Indian/", "Pacific/", "Etc/",
+    "Africa/",
+    "America/",
+    "Antarctica/",
+    "Arctic/",
+    "Asia/",
+    "Atlantic/",
+    "Australia/",
+    "Europe/",
+    "Indian/",
+    "Pacific/",
+    "Etc/",
 )
 
 
-def _datetime(input: Mapping[str, Any], key: str, timezone: str, *, required: bool = True) -> datetime | None:
+def _datetime(
+    input: Mapping[str, Any], key: str, timezone: str, *, required: bool = True
+) -> datetime | None:
     value = input.get(key)
     if value is None and not required:
         return None
     if not isinstance(value, str) or not value:
-        raise ConnectorExecutionError(ConnectorErrorCategory.VALIDATION, f"{key} must be an ISO-8601 datetime")
+        raise ConnectorExecutionError(
+            ConnectorErrorCategory.VALIDATION, f"{key} must be an ISO-8601 datetime"
+        )
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
-        raise ConnectorExecutionError(ConnectorErrorCategory.VALIDATION, f"{key} must be an ISO-8601 datetime") from None
+        raise ConnectorExecutionError(
+            ConnectorErrorCategory.VALIDATION, f"{key} must be an ISO-8601 datetime"
+        ) from None
     if parsed.tzinfo is not None:
         return parsed
     try:
@@ -230,7 +274,9 @@ def _optional_text(input: Mapping[str, Any], key: str) -> str | None:
     if value is None:
         return None
     if not isinstance(value, str) or not value.strip():
-        raise ConnectorExecutionError(ConnectorErrorCategory.VALIDATION, f"{key} must be a non-empty string")
+        raise ConnectorExecutionError(
+            ConnectorErrorCategory.VALIDATION, f"{key} must be a non-empty string"
+        )
     return value.strip()
 
 
@@ -238,16 +284,22 @@ def _json_object(response: httpx.Response) -> Mapping[str, Any]:
     try:
         payload = response.json()
     except ValueError:
-        raise ConnectorExecutionError(ConnectorErrorCategory.PERMANENT, "Google Calendar returned invalid JSON") from None
+        raise ConnectorExecutionError(
+            ConnectorErrorCategory.PERMANENT, "Google Calendar returned invalid JSON"
+        ) from None
     if not isinstance(payload, Mapping):
-        raise ConnectorExecutionError(ConnectorErrorCategory.PERMANENT, "Google Calendar returned invalid JSON")
+        raise ConnectorExecutionError(
+            ConnectorErrorCategory.PERMANENT, "Google Calendar returned invalid JSON"
+        )
     return payload
 
 
 def _identifier(payload: Mapping[str, Any], key: str, operation: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value:
-        raise ConnectorExecutionError(ConnectorErrorCategory.PERMANENT, f"Google Calendar could not {operation}")
+        raise ConnectorExecutionError(
+            ConnectorErrorCategory.PERMANENT, f"Google Calendar could not {operation}"
+        )
     return value
 
 

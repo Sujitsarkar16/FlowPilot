@@ -1,20 +1,24 @@
 <p align="center">
-  <img src="./Banner.png" alt="PulseOS — event-driven personal automation" width="100%" />
+  <img src="./Banner.png" alt="FlowPilot — event-driven personal automation" width="100%" />
 </p>
 
-<h1 align="center">PulseOS</h1>
+<h1 align="center">FlowPilot</h1>
 <p align="center"><strong>A safety-first, event-driven personal automation OS.</strong></p>
 <p align="center">
   Turn important life events into transparent, policy-governed action plans—while keeping every consequential action under human control.
 </p>
 
 <p align="center">
-  <code>Next.js</code> · <code>FastAPI</code> · <code>PostgreSQL</code> · <code>SQLAlchemy</code> · <code>TypeScript</code>
+  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&amp;logo=nextdotjs&amp;logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&amp;logo=fastapi&amp;logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&amp;logo=postgresql&amp;logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&amp;logo=python&amp;logoColor=white" alt="SQLAlchemy" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&amp;logo=typescript&amp;logoColor=white" alt="TypeScript" />
 </p>
 
-## Why PulseOS?
+## Why FlowPilot?
 
-Personal automation should not be a black box. PulseOS interprets a trusted event, matches it to a user-defined standing order, creates a deterministic action DAG, evaluates every action against a risk policy, and records the outcome in an auditable timeline.
+Personal automation should not be a black box. FlowPilot interprets a trusted event, matches it to a user-defined standing order, creates a deterministic action DAG, evaluates every action against a risk policy, and records the outcome in an auditable timeline.
 
 ```text
 Event arrives → normalize & classify → match standing order → build action plan
@@ -23,7 +27,7 @@ Event arrives → normalize & classify → match standing order → build action
 
 ## Hero workflows
 
-| Workflow | What PulseOS prepares | Human control point |
+| Workflow | What FlowPilot prepares | Human control point |
 | --- | --- | --- |
 | ✈️ **Travel Autopilot** | Trip folder, ticket reference, calendar event, weather, itinerary and packing checklist | Family Telegram message waits for approval |
 | 🚀 **Client Launch** | Requirements README, private GitHub workspace, proposal, invoice template and a kickoff suggestion | Client reply waits for approval |
@@ -77,7 +81,7 @@ docs/           Product, architecture, safety and local-development documentatio
 
 ```powershell
 docker compose up -d postgres
-docker compose exec postgres pg_isready -U pulseos -d pulseos
+docker compose exec postgres pg_isready -U flowpilot -d flowpilot
 ```
 
 2. Start the API in one terminal:
@@ -128,7 +132,7 @@ npm run build
 
 ## Current boundaries
 
-PulseOS is a hackathon MVP. OAuth configuration, deployment credentials, demo data, and all environment files are intentionally local-only. The simulated Salary Autopilot is designed to demonstrate safe planning—not banking, purchases, or investment execution.
+FlowPilot is a demo MVP. OAuth configuration, deployment credentials, demo data, and all environment files are intentionally local-only. The simulated Salary Autopilot is designed to demonstrate safe planning—not banking, purchases, or investment execution.
 
 ---
 

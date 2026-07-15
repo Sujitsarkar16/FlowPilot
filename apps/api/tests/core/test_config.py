@@ -12,4 +12,4 @@ def test_development_settings_have_safe_defaults() -> None:
 
 def test_production_requires_auth_and_encryption() -> None:
     with pytest.raises(ValidationError, match="production requires"):
-        Settings(_env_file=None, PULSEOS_ENV="production")
+        Settings(_env_file=None, FLOWPILOT_ENV="production")

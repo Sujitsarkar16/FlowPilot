@@ -2,7 +2,7 @@
 
 ## Outcome
 
-PulseOS is a calm personal control centre: it turns trusted service events into visible, policy-governed action plans while keeping the user in control.
+FlowPilot is a calm personal control centre: it turns trusted service events into visible, policy-governed action plans while keeping the user in control.
 
 ## In scope: three demonstrable workflows
 

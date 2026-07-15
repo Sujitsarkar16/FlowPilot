@@ -1,5 +1,5 @@
 {
-  "title": "PulseOS Raw Event",
+  "title": "FlowPilot Raw Event",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "id", "user_id", "source", "event_type", "occurred_at", "payload", "trust_level", "idempotency_key"],

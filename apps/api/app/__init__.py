@@ -1,1 +1,1 @@
-"""PulseOS fixture-backed API."""
+"""FlowPilot fixture-backed API."""

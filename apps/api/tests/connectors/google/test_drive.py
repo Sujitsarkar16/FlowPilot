@@ -22,7 +22,12 @@ async def test_drive_folder_creation_is_marker_idempotent() -> None:
                 200,
                 json={
                     "files": [
-                        {"id": "folder-1", "mimeType": "application/vnd.google-apps.folder", "appProperties": {"pulseos_idempotency_key": "key-1"}, "trashed": False}
+                        {
+                            "id": "folder-1",
+                            "mimeType": "application/vnd.google-apps.folder",
+                            "appProperties": {"flowpilot_idempotency_key": "key-1"},
+                            "trashed": False,
+                        }
                     ]
                 },
             )
@@ -31,17 +36,26 @@ async def test_drive_folder_creation_is_marker_idempotent() -> None:
     connector = GoogleDriveConnector(
         access_token_resolver=lambda: "resolved-token", transport=httpx.MockTransport(handler)
     )
-    first = await connector.execute(action_id=uuid4(), idempotency_key="key-1", input={"folder_name": "Trip", "parent_folder_id": "parent"})
-    second = await connector.execute(action_id=uuid4(), idempotency_key="key-1", input={"folder_name": "Trip"})
+    first = await connector.execute(
+        action_id=uuid4(),
+        idempotency_key="key-1",
+        input={"folder_name": "Trip", "parent_folder_id": "parent"},
+    )
+    second = await connector.execute(
+        action_id=uuid4(), idempotency_key="key-1", input={"folder_name": "Trip"}
+    )
 
     assert first.output == {"folder_id": "folder-1", "created": True}
     assert second.output["created"] is False
     post = next(request for request in requests if request.method == "POST")
     assert post.headers["Authorization"] == "Bearer resolved-token"
     body = json.loads(post.content)
-    assert body["appProperties"] == {"pulseos_idempotency_key": "key-1"}
+    assert body["appProperties"] == {"flowpilot_idempotency_key": "key-1"}
     assert body["parents"] == ["parent"]
-    assert "appProperties has" in next(request for request in requests if request.method == "GET").url.params["q"]
+    assert (
+        "appProperties has"
+        in next(request for request in requests if request.method == "GET").url.params["q"]
+    )
     assert len([request for request in requests if request.method == "POST"]) == 1
 
 
@@ -55,7 +69,15 @@ async def test_drive_verify_and_rollback_only_trashes_owned_folder() -> None:
             return httpx.Response(200, json={"files": []})
         if request.method == "PATCH":
             return httpx.Response(200, json={"id": "folder-1", "trashed": True})
-        return httpx.Response(200, json={"id": "folder-1", "mimeType": "application/vnd.google-apps.folder", "appProperties": {"pulseos_idempotency_key": "key-1"}, "trashed": False})
+        return httpx.Response(
+            200,
+            json={
+                "id": "folder-1",
+                "mimeType": "application/vnd.google-apps.folder",
+                "appProperties": {"flowpilot_idempotency_key": "key-1"},
+                "trashed": False,
+            },
+        )
 
     connector = GoogleDriveConnector(
         access_token_resolver=lambda: "token", transport=httpx.MockTransport(handler)
@@ -65,12 +87,23 @@ async def test_drive_verify_and_rollback_only_trashes_owned_folder() -> None:
         rollback_payload={"folder_id": "folder-1", "idempotency_key": "key-1"},
     )
     assert await connector.verify(action_id=uuid4(), idempotency_key="key-1", result=result)
-    assert (await connector.rollback(action_id=uuid4(), rollback_payload=result.rollback_payload)).output["trashed"]
+    assert (
+        await connector.rollback(action_id=uuid4(), rollback_payload=result.rollback_payload)
+    ).output["trashed"]
     assert calls == ["GET", "GET", "GET", "PATCH"]
 
     mismatch = GoogleDriveConnector(
         access_token_resolver=lambda: "token",
-        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"mimeType": "application/vnd.google-apps.folder", "appProperties": {"pulseos_idempotency_key": "other"}, "trashed": False})),
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                json={
+                    "mimeType": "application/vnd.google-apps.folder",
+                    "appProperties": {"flowpilot_idempotency_key": "other"},
+                    "trashed": False,
+                },
+            )
+        ),
     )
     safe = await mismatch.rollback(action_id=uuid4(), rollback_payload=result.rollback_payload)
     assert safe.output == {"rolled_back": False, "reason": "marker_mismatch"}
@@ -80,16 +113,23 @@ async def test_drive_verify_and_rollback_only_trashes_owned_folder() -> None:
 async def test_drive_validates_inputs_and_classifies_provider_failures() -> None:
     connector = GoogleDriveConnector(access_token_resolver=lambda: "token")
     with pytest.raises(ConnectorExecutionError) as invalid_name:
-        await connector.execute(action_id=uuid4(), idempotency_key="key-1", input={"folder_name": ""})
+        await connector.execute(
+            action_id=uuid4(), idempotency_key="key-1", input={"folder_name": ""}
+        )
     assert invalid_name.value.category is ConnectorErrorCategory.VALIDATION
 
-    for status, category in ((401, ConnectorErrorCategory.AUTHORIZATION), (503, ConnectorErrorCategory.RETRYABLE)):
+    for status, category in (
+        (401, ConnectorErrorCategory.AUTHORIZATION),
+        (503, ConnectorErrorCategory.RETRYABLE),
+    ):
         failing = GoogleDriveConnector(
             access_token_resolver=lambda: "token",
             transport=httpx.MockTransport(lambda _: httpx.Response(status, json={"error": {}})),
         )
         with pytest.raises(ConnectorExecutionError) as error:
-            await failing.execute(action_id=uuid4(), idempotency_key="key-1", input={"folder_name": "Trip"})
+            await failing.execute(
+                action_id=uuid4(), idempotency_key="key-1", input={"folder_name": "Trip"}
+            )
         assert error.value.category is category
 
 
@@ -114,7 +154,7 @@ async def test_drive_upload_verifies_file_and_preserves_a_nonempty_folder() -> N
                 "mimeType": "application/vnd.google-apps.folder"
                 if request.url.path.endswith("folder-1")
                 else "text/markdown",
-                "appProperties": {"pulseos_idempotency_key": marker},
+                "appProperties": {"flowpilot_idempotency_key": marker},
                 "trashed": False,
             },
         )

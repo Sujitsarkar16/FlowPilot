@@ -25,7 +25,7 @@ class TelegramClient:
 
     async def get_me(self, bot_token: str | None) -> TelegramBot:
         if self._mock_mode:
-            return TelegramBot(id="mock-telegram-bot", username="pulseos_demo_bot")
+            return TelegramBot(id="mock-telegram-bot", username="flowpilot_demo_bot")
         payload = await self._request(bot_token, "getMe")
         return self._bot(payload)
 
@@ -35,7 +35,7 @@ class TelegramClient:
         await self._request(
             bot_token,
             "sendMessage",
-            {"chat_id": chat_id, "text": "PulseOS connection test successful."},
+            {"chat_id": chat_id, "text": "FlowPilot connection test successful."},
         )
 
     async def _request(

@@ -36,7 +36,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--canvas)] p-6">
       <section className="w-full max-w-md rounded-2xl border border-[var(--line)] bg-white p-8 shadow-[var(--shadow)]">
-        <p className="text-sm font-semibold text-[var(--accent)]">pulseOS</p>
+        <p className="text-sm font-semibold text-[var(--accent)]">FlowPilot</p>
         <h1 className="mt-3 text-3xl font-semibold text-[var(--ink)]">Sign in to your workspace</h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
           We will email a secure, one-time sign-in link.

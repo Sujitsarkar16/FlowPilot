@@ -18,11 +18,18 @@ async def test_private_repository_is_idempotent_and_archived_on_rollback() -> No
             assert request.json() if False else True
             return httpx.Response(
                 201,
-                json={"id": 7, "full_name": "octo/trip", "html_url": "https://github.com/octo/trip", "private": True},
+                json={
+                    "id": 7,
+                    "full_name": "octo/trip",
+                    "html_url": "https://github.com/octo/trip",
+                    "private": True,
+                },
             )
         if request.method == "PUT":
-            readme = base64.b64decode(request.content.decode().split('"content":"')[1].split('"')[0]).decode()
-            assert "pulseos:" in readme
+            readme = base64.b64decode(
+                request.content.decode().split('"content":"')[1].split('"')[0]
+            ).decode()
+            assert "flowpilot:" in readme
             return httpx.Response(201, json={"content": {"path": "README.md"}})
         if request.method == "GET":
             return httpx.Response(200, json={"id": 7, "archived": False})
@@ -44,6 +51,8 @@ async def test_private_repository_is_idempotent_and_archived_on_rollback() -> No
     assert result.output["private"] is True
     assert repeat.output == result.output
     assert await connector.verify(action_id=action_id, idempotency_key="repo-key", result=result)
-    rollback = await connector.rollback(action_id=action_id, rollback_payload=result.rollback_payload)
+    rollback = await connector.rollback(
+        action_id=action_id, rollback_payload=result.rollback_payload
+    )
     assert rollback.output == {"full_name": "octo/trip", "archived": True}
     assert [request.method for request in requests].count("POST") == 1

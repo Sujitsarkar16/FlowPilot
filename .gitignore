@@ -7,6 +7,7 @@
 *.pfx
 secrets/
 credentials/
+client_secret_*.json
 
 # Agent and internal planning metadata
 .kiro/

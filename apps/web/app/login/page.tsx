@@ -1,82 +1,69 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { createClient } from "@/lib/supabase/client";
+function safeReturnTo(): string {
+  const next = new URLSearchParams(window.location.search).get("returnTo");
+  return next?.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+}
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "sent">("idle");
+  const [returnTo, setReturnTo] = useState("/dashboard");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setReturnTo(safeReturnTo());
     const callbackError = new URLSearchParams(window.location.search).get("error");
-    if (callbackError === "auth_not_configured") setError("Authentication is not configured yet.");
-    if (callbackError === "callback_failed")
-      setError("We could not finish that sign-in. Please try again.");
+    if (callbackError) setError(decodeURIComponent(callbackError));
   }, []);
 
-  async function signIn(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("loading");
-    setError(null);
-    try {
-      const { error: signInError } = await createClient().auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
-      });
-      if (signInError) throw signInError;
-      setStatus("sent");
-    } catch {
-      setError("We could not send that sign-in link. Check the address and try again.");
-      setStatus("idle");
-    }
-  }
+  const encoded = encodeURIComponent(returnTo);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--canvas)] p-6">
-      <section className="w-full max-w-md rounded-2xl border border-[var(--line)] bg-white p-8 shadow-[var(--shadow)]">
-        <p className="text-sm font-semibold text-[var(--accent)]">FlowPilot</p>
-        <h1 className="mt-3 text-3xl font-semibold text-[var(--ink)]">Sign in to your workspace</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          We will email a secure, one-time sign-in link.
-        </p>
-        <form className="mt-7 space-y-4" onSubmit={signIn}>
-          <label className="block text-sm font-medium text-[var(--ink)]" htmlFor="email">
-            Email address
-          </label>
-          <input
-            className="h-11 w-full rounded-md border border-[var(--line-strong)] px-3 text-[var(--ink)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-            id="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <span className="inline-flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+              FP
+            </span>
+            <span className="text-lg font-semibold text-slate-900">FlowPilot</span>
+          </span>
+        </div>
+
+        <section className="rounded-2xl border border-slate-200 bg-white px-8 py-9 shadow-sm">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Sign in to your workspace
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Continue with Auth0 to access your automation control centre.
+          </p>
+
           {error && (
-            <p className="text-sm text-[var(--red)]" role="alert">
+            <p className="mt-5 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-700" role="alert">
               {error}
             </p>
           )}
-          {status === "sent" && (
-            <p className="text-sm text-[var(--green)]" role="status">
-              Check your inbox for the sign-in link.
-            </p>
-          )}
-          <button
-            className="h-11 w-full rounded-md bg-[var(--accent)] font-medium text-white hover:bg-[var(--accent-dark)] disabled:opacity-60"
-            disabled={status === "loading" || status === "sent"}
-            type="submit"
+
+          {/* Auth routes require full navigation, so use <a> not next/link. */}
+          <a
+            className="mt-6 flex h-11 w-full items-center justify-center rounded-lg bg-indigo-600 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            href={`/auth/login?returnTo=${encoded}`}
           >
-            {status === "loading"
-              ? "Sending link…"
-              : status === "sent"
-                ? "Link sent"
-                : "Email me a sign-in link"}
-          </button>
-        </form>
-      </section>
+            Sign in
+          </a>
+          <a
+            className="mt-3 flex h-11 w-full items-center justify-center rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            href={`/auth/login?screen_hint=signup&returnTo=${encoded}`}
+          >
+            Create an account
+          </a>
+
+          <p className="mt-5 text-center text-xs text-slate-400">
+            Email, password, and Google sign-in are handled securely by Auth0.
+          </p>
+        </section>
+      </div>
     </main>
   );
 }

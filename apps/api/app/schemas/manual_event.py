@@ -22,3 +22,4 @@ class ManualEventResponse(BaseModel):
     type: LifeEventType
     status: RawEventStatus
     is_duplicate: bool
+    plan_id: UUID | None = None

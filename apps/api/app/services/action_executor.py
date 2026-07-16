@@ -1,5 +1,6 @@
 """Idempotent action execution coordinated through durable jobs."""
 
+import logging
 from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import UUID
@@ -11,7 +12,8 @@ from sqlalchemy.orm import joinedload
 from app.connectors.base import ConnectorExecutionError
 from app.db.repositories.connections import ConnectionRepository
 from app.models.action import Action, ActionDependency
-from app.models.enums import ActionStatus, PlanStatus
+from app.models.approval import Approval
+from app.models.enums import ActionStatus, ApprovalDecision, PlanStatus
 from app.models.job import Job
 from app.models.plan import Plan
 from app.schemas.connector import ConnectorErrorCategory
@@ -29,6 +31,8 @@ from app.services.plan_execution import PlanExecutionService
 from app.services.plan_graph import CandidateAction
 from app.services.policy_engine import PolicyEngine
 from app.services.retry_policy import RetryPolicy
+
+logger = logging.getLogger(__name__)
 
 
 class ActionExecutor:
@@ -78,6 +82,7 @@ class ActionExecutor:
         if (
             decision.status is ActionStatus.WAITING_APPROVAL
             and action.status is not ActionStatus.APPROVED
+            and not await self._was_approved(action.id)
         ):
             action.status = ActionStatus.WAITING_APPROVAL
             action.policy_reason = decision.reason.value
@@ -129,6 +134,14 @@ class ActionExecutor:
         await self._session.flush()
         await PlanExecutionService(self._session, self._queue).queue_ready_actions(action.plan)
         await self._queue.complete(job)
+        logger.info(
+            "action execution completed",
+            extra={
+                "event_id": str(action.plan.source_event_id),
+                "plan_id": str(action.plan_id),
+                "action_id": str(action.id),
+            },
+        )
 
     async def _action(self, action_id: UUID | None) -> Action | None:
         if action_id is None:
@@ -142,6 +155,16 @@ class ActionExecutor:
             .where(Action.id == action_id)
         )
         return cast(Action | None, await self._session.scalar(statement))
+
+    async def _was_approved(self, action_id: UUID) -> bool:
+        return (
+            await self._session.scalar(
+                select(Approval.id).where(
+                    Approval.action_id == action_id,
+                    Approval.decision == ApprovalDecision.APPROVED,
+                )
+            )
+        ) is not None
 
     async def _dependencies_complete(self, action_id: UUID) -> bool:
         statuses = await self._session.scalars(

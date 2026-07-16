@@ -2,7 +2,7 @@
 
 from app.core.config import Settings
 from app.services.ai.base import AIProvider
-from app.services.ai.provider import OpenAICompatibleProvider
+from app.services.ai.provider import OpenRouterProvider
 from app.services.ai.schemas import (
     AIError,
     AITimeoutError,
@@ -18,12 +18,12 @@ class AINotConfiguredError(AIError):
 
 def build_ai_provider(settings: Settings) -> AIProvider:
     """Return the configured production provider or fail loudly if unconfigured."""
-    if settings.ai_api_key is None:
-        raise AINotConfiguredError("AI_API_KEY is not configured")
-    return OpenAICompatibleProvider(
-        base_url=settings.ai_base_url,
-        api_key=settings.ai_api_key.get_secret_value(),
-        model=settings.ai_model,
+    if settings.openrouter_api_key is None:
+        raise AINotConfiguredError("OPENROUTER_API_KEY is not configured")
+    return OpenRouterProvider(
+        base_url=settings.openrouter_base_url,
+        api_key=settings.openrouter_api_key.get_secret_value(),
+        model=settings.openrouter_model,
     )
 
 
@@ -35,6 +35,6 @@ __all__ = [
     "AINotConfiguredError",
     "StructuredResult",
     "TokenUsage",
-    "OpenAICompatibleProvider",
+    "OpenRouterProvider",
     "build_ai_provider",
 ]

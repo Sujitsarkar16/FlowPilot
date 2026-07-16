@@ -1,5 +1,9 @@
+import hmac
+import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from hashlib import sha256
+from time import time
 
 import pytest
 from fastapi import FastAPI
@@ -13,6 +17,17 @@ from app.models.enums import CompilationStatus
 from app.models.standing_order import StandingOrder
 from app.models.user import User
 from app.services.action_registry import ACTION_REGISTRY
+
+
+def _signed_body(payload: dict[str, object]) -> tuple[bytes, dict[str, str]]:
+    body = json.dumps(payload, separators=(",", ":")).encode()
+    timestamp = str(int(time()))
+    signature = hmac.new(b"secret", f"{timestamp}.".encode() + body, sha256).hexdigest()
+    return body, {
+        "Content-Type": "application/json",
+        "X-Mock-Bank-Timestamp": timestamp,
+        "X-Mock-Bank-Signature": f"sha256={signature}",
+    }
 
 
 def _rule() -> dict[str, object]:
@@ -78,16 +93,13 @@ async def test_salary_webhook_creates_an_idempotent_safe_plan(
         "savings_rate": 0.2,
         "investment_rate": 0.1,
     }
+    body, headers = _signed_body(payload)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         created = await client.post(
-            "/api/v1/mock-bank/salary-credits",
-            json=payload,
-            headers={"X-Mock-Bank-Secret": "secret"},
+            "/api/v1/mock-bank/salary-credits", content=body, headers=headers
         )
         replay = await client.post(
-            "/api/v1/mock-bank/salary-credits",
-            json=payload,
-            headers={"X-Mock-Bank-Secret": "secret"},
+            "/api/v1/mock-bank/salary-credits", content=body, headers=headers
         )
 
     assert created.status_code == 201
@@ -101,7 +113,7 @@ async def test_salary_webhook_creates_an_idempotent_safe_plan(
         "income": 5000.0,
     }
     assert created.json()["overspending_warning"]
-    assert replay.json()["is_duplicate"] is True
+    assert replay.status_code == 409
 
 
 def test_salary_allocation_rounds_down_and_transfer_stays_approval_only() -> None:

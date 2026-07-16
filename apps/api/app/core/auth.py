@@ -1,4 +1,4 @@
-"""Verification of Supabase access tokens using cached JWKS keys."""
+"""Verification of Auth0 access tokens using cached JWKS keys."""
 
 import asyncio
 from collections.abc import Awaitable, Callable
@@ -14,6 +14,9 @@ from app.core.config import Settings
 
 JwksFetcher = Callable[[], Awaitable[dict[str, Any]]]
 _ALLOWED_ALGORITHMS = {"RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
+# Namespace for custom claims added via an Auth0 post-login Action (access tokens omit
+# profile fields by default). Standard claims are still checked first as a fallback.
+_CLAIM_NAMESPACE = "https://flowpilot.app/"
 
 
 class AuthenticationError(Exception):
@@ -28,19 +31,17 @@ class AuthClaims:
 
 
 class JWTVerifier:
-    """Verify Supabase JWTs without trusting any client-provided identity fields."""
+    """Verify Auth0 JWTs without trusting any client-provided identity fields."""
 
     def __init__(
         self, settings: Settings, fetch_jwks: JwksFetcher | None = None, cache_seconds: int = 300
     ) -> None:
-        self.audience = settings.supabase_jwt_audience or "authenticated"
-        if not settings.supabase_url:
+        if not settings.auth0_domain or not settings.auth0_audience:
             raise AuthenticationError("Authentication is unavailable")
-        base_url = str(settings.supabase_url).rstrip("/")
-        self.issuer = str(settings.supabase_jwt_issuer or f"{base_url}/auth/v1")
-        self.jwks_url = str(
-            settings.supabase_jwks_url or f"{base_url}/auth/v1/.well-known/jwks.json"
-        )
+        self.audience = settings.auth0_audience
+        domain = settings.auth0_domain.removeprefix("https://").removeprefix("http://").strip("/")
+        self.issuer = f"https://{domain}/"
+        self.jwks_url = f"https://{domain}/.well-known/jwks.json"
         self._fetch_jwks = fetch_jwks or self._fetch_remote_jwks
         self._cache_seconds = cache_seconds
         self._keys: dict[str, jwt.PyJWK] = {}
@@ -68,15 +69,15 @@ class JWTVerifier:
                 raise AuthenticationError("Invalid token")
         except (AuthenticationError, InvalidTokenError, KeyError, TypeError, ValueError):
             raise AuthenticationError("Invalid or expired access token") from None
-        metadata = payload.get("user_metadata")
+        email = payload.get("email") or payload.get(f"{_CLAIM_NAMESPACE}email")
         display_name = (
-            metadata.get("full_name") or metadata.get("name")
-            if isinstance(metadata, dict)
-            else None
+            payload.get("name")
+            or payload.get("nickname")
+            or payload.get(f"{_CLAIM_NAMESPACE}name")
         )
         return AuthClaims(
             subject=subject,
-            email=payload.get("email") if isinstance(payload.get("email"), str) else None,
+            email=email if isinstance(email, str) else None,
             display_name=display_name if isinstance(display_name, str) else None,
         )
 

@@ -60,6 +60,9 @@ class SecretCipher:
             ciphertext = base64.urlsafe_b64decode(
                 encoded_ciphertext + "=" * (-len(encoded_ciphertext) % 4)
             )
+            # Reject non-canonical base64 too: changing unused trailing bits must not pass as intact data.
+            if _encode(nonce) != encoded_nonce or _encode(ciphertext) != encoded_ciphertext:
+                raise SecretDecryptionError("Unable to decrypt connector secret")
             return AESGCM(self._keys[key_id]).decrypt(nonce, ciphertext, _CONTEXT).decode()
         except (InvalidTag, UnicodeDecodeError, ValueError, binascii.Error) as error:
             if isinstance(error, SecretDecryptionError):

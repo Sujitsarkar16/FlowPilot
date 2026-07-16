@@ -1,12 +1,7 @@
-import { EmptyState } from "@/components/empty-state";
+import { Suspense } from "react";
+
+import { EventsList } from "@/features/events/events-list";
 
 export default function EventsPage() {
-  return (
-    <div className="p-4 sm:p-6">
-      <EmptyState
-        description="Incoming events will appear here after a connection or manual event is added."
-        title="No events yet"
-      />
-    </div>
-  );
+  return <Suspense fallback={<div className="p-6 text-sm text-slate-600">Loading events…</div>}><EventsList /></Suspense>;
 }

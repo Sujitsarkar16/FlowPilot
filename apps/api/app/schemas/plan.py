@@ -17,4 +17,6 @@ class PlanRead(BaseModel):
     planner_rationale: str | None
     status: PlanStatus
     version: int
+    is_shadow: bool = False
+    execution_requested: bool = False
     actions: list[ActionRead] = Field(default_factory=list)

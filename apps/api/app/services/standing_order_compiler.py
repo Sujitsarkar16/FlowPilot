@@ -1,5 +1,6 @@
 """Compile natural-language standing orders through the bounded action catalog."""
 
+import logging
 from dataclasses import dataclass
 
 from app.schemas.compiled_rule import CompiledRule
@@ -8,6 +9,8 @@ from app.services.ai.prompts.compile_rule import build_compile_rule_prompt
 from app.services.ai.prompts.system import SYSTEM_PROMPT
 from app.services.ai.schemas import AIError
 from app.services.content_safety import sanitize_untrusted_content
+
+logger = logging.getLogger(__name__)
 
 
 class StandingOrderCompilationError(Exception):
@@ -33,6 +36,7 @@ class StandingOrderCompiler:
                 schema=CompiledRule,
             )
         except AIError as error:
+            logger.warning("standing order compilation failed", extra={"error": str(error), "cause": repr(error.__cause__)})
             raise StandingOrderCompilationError("Could not compile this standing order") from error
         warnings = [*result.data.warnings]
         if sanitized.injection_warnings:

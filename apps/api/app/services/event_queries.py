@@ -64,6 +64,7 @@ class EventQueryService:
         )
         has_more = len(events) > limit
         page = events[:limit]
+        latest_plans = await self._plans.latest_for_events(user_id, (event.id for event in page))
         items = [
             EventListItem(
                 id=event.id,
@@ -73,6 +74,9 @@ class EventQueryService:
                 summary=event.summary,
                 occurred_at=event.occurred_at,
                 entities=[_mask(entity) for entity in event.entities],
+                latest_plan=(
+                    _plan_summary(latest_plans[event.id]) if event.id in latest_plans else None
+                ),
             )
             for event in page
         ]
@@ -90,8 +94,17 @@ class EventQueryService:
             loaded = await self._plans.get(user_id, plans[-1].id)
             if loaded is not None:
                 latest = _plan_summary(loaded)
-        detail = EventDetail.model_validate(event)
-        return detail.model_copy(update={"latest_plan": latest})
+        return EventDetail(
+            id=event.id,
+            type=event.type,
+            confidence=event.confidence,
+            importance=event.importance,
+            summary=event.summary,
+            occurred_at=event.occurred_at,
+            entities=[_mask(entity) for entity in event.entities],
+            source=event.raw_event.source,
+            latest_plan=latest,
+        )
 
 
 def _plan_summary(plan: Plan) -> PlanSummary:
@@ -100,4 +113,8 @@ def _plan_summary(plan: Plan) -> PlanSummary:
         objective=plan.objective,
         status=plan.status.value,
         action_count=len(plan.actions),
+        completed_actions=sum(action.status.value == "completed" for action in plan.actions),
+        pending_actions=sum(action.status.value in {"planned", "waiting_approval", "approved", "queued", "running"} for action in plan.actions),
+        failed_actions=sum(action.status.value == "failed" for action in plan.actions),
+        is_shadow=plan.is_shadow,
     )

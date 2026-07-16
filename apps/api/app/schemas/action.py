@@ -20,3 +20,6 @@ class ActionRead(BaseModel):
     requires_approval: bool
     policy_reason: str | None
     completed_at: datetime | None
+    last_error: str | None = None
+    depends_on: list[UUID] = []
+    rollback_supported: bool = False

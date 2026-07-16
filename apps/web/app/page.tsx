@@ -1,922 +1,371 @@
-"use client";
+import type { Metadata } from "next";
+import {
+  ArrowRight,
+  Check,
+  ChevronRight,
+  CircleCheckBig,
+  Clock3,
+  CreditCard,
+  FileCheck2,
+  Github,
+  LockKeyhole,
+  Mail,
+  Network,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 
-import { useState } from "react";
-
-type Section = "life-feed" | "orders" | "autonomy" | "graph" | "audit";
-
-type PlanAction = {
-  id: string;
-  label: string;
-  detail: string;
-  connector: string;
-  status: "verified" | "awaiting approval" | "proposed" | "blocked";
-  risk: "safe" | "approval" | "policy";
+export const metadata: Metadata = {
+  title: "FlowPilot | Automate with confidence",
+  description:
+    "FlowPilot gives every automation a clear approval path, a live activity feed, and a home your team can trust.",
 };
 
-const planActions: PlanAction[] = [
+const features = [
   {
-    id: "ticket",
-    label: "Save boarding pass",
-    detail: "Travel / 2026 / Bengaluru",
-    connector: "Drive",
-    status: "verified",
-    risk: "safe",
+    icon: ShieldCheck,
+    title: "Safety by default",
+    description:
+      "Set the boundaries once. FlowPilot asks for approval whenever an automation reaches a decision that matters.",
   },
   {
-    id: "calendar",
-    label: "Create calendar hold",
-    detail: "Airport and boarding reminders included",
-    connector: "Calendar",
-    status: "verified",
-    risk: "safe",
+    icon: Network,
+    title: "One connected workspace",
+    description:
+      "Bring the services that run your day into a single, calm control centre—without giving up visibility.",
   },
   {
-    id: "weather",
-    label: "Prepare for the weather",
-    detail: "Packing checklist is ready",
-    connector: "Weather",
-    status: "verified",
-    risk: "safe",
-  },
-  {
-    id: "family",
-    label: "Send family itinerary",
-    detail: "A draft is ready for your review",
-    connector: "Messages",
-    status: "awaiting approval",
-    risk: "approval",
+    icon: Clock3,
+    title: "A complete activity trail",
+    description:
+      "See what ran, why it ran, and what happened next. Every action has context your team can follow.",
   },
 ];
 
-const navItems: { id: Section; icon: string; label: string }[] = [
-  { id: "life-feed", icon: "⌂", label: "Life Feed" },
-  { id: "orders", icon: "⌘", label: "Standing Orders" },
-  { id: "autonomy", icon: "◎", label: "Autonomy Centre" },
-  { id: "graph", icon: "◇", label: "Personal Graph" },
-  { id: "audit", icon: "≡", label: "Audit trail" },
+const steps = [
+  {
+    number: "01",
+    title: "Connect your tools",
+    description: "Link the services you already use in a few guided, secure steps.",
+  },
+  {
+    number: "02",
+    title: "Set your guardrails",
+    description: "Choose which workflows run freely and which ones should pause for review.",
+  },
+  {
+    number: "03",
+    title: "Stay in the loop",
+    description: "Watch your feed, approve the important moments, and move on with confidence.",
+  },
 ];
 
-const domains = [
-  ["Calendar", "Calendar", "Automatic", "Meetings, holds, and reminders"],
-  ["Files", "Drive", "Automatic", "Save and organise approved documents"],
-  ["Drafting", "Drafts", "Automatic", "Prepare replies and summaries"],
-  ["Messages", "Messages", "Ask every time", "Any external message needs approval"],
-  ["Sharing", "Sharing", "Ask every time", "Review recipient and permissions"],
-  ["Repositories", "GitHub", "Ask every time", "Private by default"],
-  ["Finance", "Finance", "Never automatic", "Suggestions only — no money movement"],
-] as const;
+const plans = [
+  {
+    name: "Starter",
+    description: "For building your first trusted workflows.",
+    price: "$0",
+    detail: "Free forever",
+    features: ["2 connected services", "100 monthly actions", "Approval inbox"],
+  },
+  {
+    name: "Pilot",
+    description: "For individuals who want their whole day in flow.",
+    price: "$12",
+    detail: "per month",
+    features: ["Unlimited connected services", "5,000 monthly actions", "Custom standing orders", "Priority support"],
+    highlighted: true,
+  },
+  {
+    name: "Team",
+    description: "For teams automating their most important work.",
+    price: "$32",
+    detail: "per member / month",
+    features: ["Everything in Pilot", "Shared approval policies", "Team activity history", "Workspace controls"],
+  },
+];
 
-function Status({
-  children,
-  tone = "neutral",
-}: {
-  children: React.ReactNode;
-  tone?: "green" | "amber" | "neutral" | "red";
-}) {
+function BrandMark() {
   return (
-    <span className={`status status-${tone}`}>
-      <span aria-hidden="true" />
-      {children}
+    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-lg shadow-indigo-200">
+      FP
     </span>
   );
 }
 
-function Button({
-  children,
-  className = "",
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export default function HomePage() {
   return (
-    <button type="button" className={`button ${className}`.trim()} {...props}>
-      {children}
-    </button>
-  );
-}
-
-export default function LifeFeedPage() {
-  const [activeSection, setActiveSection] = useState<Section>("life-feed");
-  const [approved, setApproved] = useState(false);
-  const [shadowMode, setShadowMode] = useState(false);
-  const [showPlan, setShowPlan] = useState(true);
-  const [ruleEnabled, setRuleEnabled] = useState(true);
-  const [ruleSaved, setRuleSaved] = useState(false);
-  const [draft, setDraft] = useState(
-    "Whenever I book travel, prepare my itinerary and remind me about documents.",
-  );
-  const [budget, setBudget] = useState(12);
-  const [domainModes, setDomainModes] = useState<Record<string, string>>({});
-
-  const reviewPlan = () => {
-    setActiveSection("life-feed");
-    setShowPlan(true);
-    window.setTimeout(
-      () =>
-        document
-          .getElementById("plan-manifest")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      0,
-    );
-  };
-
-  const setDomainMode = (name: string, mode: string) =>
-    setDomainModes((current) => ({ ...current, [name]: mode }));
-
-  return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand-row">
-          <a className="brand" href="#top" aria-label="FlowPilot home">
-            pulse<span>OS</span>
+    <main className="overflow-hidden bg-white text-slate-900">
+      <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur-lg">
+        <nav
+          className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-8"
+          aria-label="Main navigation"
+        >
+          <a href="#top" className="flex items-center gap-2.5" aria-label="FlowPilot home">
+            <BrandMark />
+            <span className="text-lg font-semibold tracking-tight">FlowPilot</span>
           </a>
-          <button
-            className="new-action"
-            type="button"
-            onClick={() => setActiveSection("orders")}
-            aria-label="Create a standing order"
-          >
-            +
-          </button>
-        </div>
-        <p className="workspace-label">Personal control centre</p>
-        <nav className="primary-nav" aria-label="Primary navigation">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`nav-item ${activeSection === item.id ? "active" : ""}`}
-              onClick={() => setActiveSection(item.id)}
-              aria-current={activeSection === item.id ? "page" : undefined}
+          <div className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
+            <a className="transition hover:text-indigo-600" href="#features">
+              Features
+            </a>
+            <a className="transition hover:text-indigo-600" href="#how-it-works">
+              How it works
+            </a>
+            <a className="transition hover:text-indigo-600" href="#pricing">
+              Pricing
+            </a>
+            <a className="transition hover:text-indigo-600" href="#contact">
+              Contact
+            </a>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <a
+              className="hidden text-sm font-semibold text-slate-700 transition hover:text-indigo-600 sm:block"
+              href="/login?returnTo=%2Fdashboard"
             >
-              <span aria-hidden="true">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
+              Sign in
+            </a>
+            <a
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              href="/login?returnTo=%2Fdashboard"
+            >
+              Get started <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
+            </a>
+          </div>
         </nav>
-        <div className="sidebar-bottom">
-          <div className="connection-state">
-            <span className="online-dot" aria-hidden="true" />
-            <div>
-              <strong>4 connected services</strong>
-              <small>All systems operational</small>
+      </header>
+
+      <section id="top" className="relative isolate">
+        <div className="absolute inset-x-0 top-0 -z-10 h-[630px] bg-[radial-gradient(circle_at_50%_0%,#e0e7ff_0%,#ffffff_62%)]" />
+        <div className="mx-auto max-w-7xl px-5 pb-16 pt-20 sm:px-8 sm:pb-24 sm:pt-28 lg:pt-32">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white px-3.5 py-1.5 text-sm font-semibold text-indigo-700 shadow-sm">
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              The calmer way to automate
+            </p>
+            <h1 className="mt-7 text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-6xl lg:text-7xl">
+              Your life moves fast.
+              <span className="block text-indigo-600">Your automations should move wisely.</span>
+            </h1>
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
+              FlowPilot brings your connected tools, standing orders, and high-stakes decisions into
+              one beautifully clear control centre.
+            </p>
+            <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+              <a
+                className="inline-flex h-12 items-center justify-center rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:-translate-y-0.5 hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                href="/login?returnTo=%2Fdashboard"
+              >
+                Create your workspace <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              </a>
+              <a
+                className="inline-flex h-12 items-center justify-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                href="#how-it-works"
+              >
+                See how it works <ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" />
+              </a>
             </div>
+            <p className="mt-4 text-sm text-slate-500">Start free. No credit card required.</p>
           </div>
-          <button type="button" className="profile" aria-label="Open Sujit’s profile">
-            <span className="avatar">S</span>
-            <span>
-              <strong>Sujit</strong>
-              <small>Personal workspace</small>
-            </span>
-            <b aria-hidden="true">⌄</b>
-          </button>
-        </div>
-      </aside>
 
-      <section className="workspace" id="top">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <span className="online-dot" aria-hidden="true" />
-            Workspace protected <span className="topbar-divider">/</span> Demo workspace
-          </div>
-          <div className="topbar-actions">
-            <button
-              type="button"
-              className={`shadow-toggle ${shadowMode ? "on" : ""}`}
-              onClick={() => setShadowMode((value) => !value)}
-              aria-pressed={shadowMode}
-            >
-              <span aria-hidden="true" />
-              Shadow mode
-            </button>
-            <button type="button" className="icon-button" aria-label="View notifications">
-              ⌁<i>1</i>
-            </button>
-          </div>
-        </header>
-
-        {shadowMode && (
-          <div className="shadow-banner" role="status">
-            <span aria-hidden="true">◌</span>
-            <div>
-              <strong>Shadow mode is on</strong>
-              <p>Plans are shown as usual, but no connector side effects will be requested.</p>
-            </div>
-            <Button className="button-quiet" onClick={() => setShadowMode(false)}>
-              Exit shadow mode
-            </Button>
-          </div>
-        )}
-
-        {activeSection === "life-feed" && (
-          <>
-            <section className="hero" aria-labelledby="page-title">
-              <div>
-                <p className="eyebrow">Wednesday, 15 July</p>
-                <h1 id="page-title">Good afternoon, Sujit.</h1>
-                <p className="lede">
-                  Your assistants have kept the important things moving — with you in control.
-                </p>
-              </div>
-              <div className="control-note">
-                <span aria-hidden="true">✦</span>
-                <p>
-                  <strong>Designed around your boundaries</strong>
-                  <br />
-                  External messages never leave without your approval.
-                </p>
-              </div>
-            </section>
-
-            <dl className="metric-grid" aria-label="Today’s FlowPilot summary">
-              <div>
-                <dt>Events handled</dt>
-                <dd>3</dd>
-                <small>Across 4 connected services</small>
-              </div>
-              <div>
-                <dt>Needs approval</dt>
-                <dd>{approved ? "0" : "1"}</dd>
-                <small>{approved ? "All decisions are up to date" : "One message is ready"}</small>
-              </div>
-              <div>
-                <dt>Time returned</dt>
-                <dd>
-                  8<span>h</span>
-                </dd>
-                <small>This month, based on completed tasks</small>
-              </div>
-              <div className="metric-trust">
-                <dt>Autonomy</dt>
-                <dd>
-                  <Status tone="green">Level 2</Status>
-                </dd>
-                <small>Safe actions can run automatically</small>
-              </div>
-            </dl>
-
-            <section className="section-intro">
-              <div>
-                <p className="eyebrow">Today</p>
-                <h2>Life Feed</h2>
-              </div>
-              <div className="filter-group" aria-label="Life Feed filters">
-                <button type="button" className="filter active">
-                  All activity
-                </button>
-                <button type="button" className="filter">
-                  Needs you
-                </button>
-              </div>
-            </section>
-
-            <section className="event-layout" aria-label="Today’s events">
-              <article className="event-card featured-card" aria-labelledby="travel-title">
-                <header className="event-header">
-                  <div className="event-icon travel" aria-hidden="true">
-                    ✈
-                  </div>
-                  <div className="event-title">
-                    <p className="eyebrow">
-                      Travel Autopilot <span className="event-source">Gmail</span>
-                    </p>
-                    <h2 id="travel-title">Trip to Bengaluru detected</h2>
-                    <p>
-                      Mumbai <b>→</b> Bengaluru <i>·</i> Sat, 19 Jul <i>·</i> 08:10 IST
-                    </p>
-                  </div>
-                  <Status tone={approved ? "green" : "amber"}>
-                    {approved ? "Complete" : "1 approval needed"}
-                  </Status>
-                </header>
-                <div className="trip-summary">
-                  <div>
-                    <span className="flight-label">INDIGO 6E-123</span>
-                    <strong>Travel plan prepared</strong>
-                    <p>
-                      Flight details were extracted with high confidence. Your PNR remains redacted.
-                    </p>
-                  </div>
-                  <span className="confidence">
-                    97%<small>confidence</small>
-                  </span>
+          <div className="relative mx-auto mt-16 max-w-5xl rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-indigo-100/70 sm:p-3">
+            <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
+              <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-300" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
                 </div>
-                <ul className="action-list">
-                  {planActions.slice(0, 3).map((action) => (
-                    <li key={action.id}>
-                      <span className="action-check" aria-hidden="true">
-                        ✓
-                      </span>
-                      <div>
-                        <strong>{action.label}</strong>
-                        <small>{action.detail}</small>
+                <span className="text-xs font-medium text-slate-400">Your control centre</span>
+                <span className="w-12" />
+              </div>
+              <div className="grid gap-4 p-4 sm:grid-cols-[170px_1fr] sm:gap-6 sm:p-6">
+                <aside className="hidden rounded-lg bg-slate-900 p-4 text-slate-300 sm:block">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <BrandMark />
+                    FlowPilot
+                  </div>
+                  <div className="mt-8 space-y-2 text-xs font-medium">
+                    <p className="rounded-md bg-white/10 px-3 py-2.5 text-white">Life feed</p>
+                    <p className="px-3 py-2.5">Approvals</p>
+                    <p className="px-3 py-2.5">Connections</p>
+                    <p className="px-3 py-2.5">Standing orders</p>
+                  </div>
+                </aside>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-950">Good morning, Alex</p>
+                      <p className="mt-1 text-xs text-slate-500">Here&apos;s what your workflows are doing today.</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All systems normal
+                    </span>
+                  </div>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    {[
+                      ["12", "Actions completed"],
+                      ["1", "Needs your approval"],
+                      ["4", "Active connections"],
+                    ].map(([value, label]) => (
+                      <div key={label} className="rounded-lg border border-slate-200 bg-white p-3.5">
+                        <p className="text-xl font-semibold tracking-tight text-slate-950">{value}</p>
+                        <p className="mt-1 text-xs text-slate-500">{label}</p>
                       </div>
-                      <Status tone="green">Verified</Status>
+                    ))}
+                  </div>
+                  <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
+                    <div className="flex gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white text-indigo-600 shadow-sm">
+                        <CreditCard className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-900">Review new subscription</p>
+                          <span className="text-xs text-slate-500">Just now</span>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-slate-600">
+                          A $24.00 monthly charge is ready for your approval.
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                          <span className="rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white">Review</span>
+                          <span className="rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Dismiss</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
+                    <CircleCheckBig className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
+                    <p className="text-xs text-slate-600"><span className="font-semibold text-slate-800">Calendar brief sent</span> to your inbox automatically.</p>
+                    <span className="ml-auto text-xs text-slate-400">9:00 AM</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-slate-100 bg-slate-50 py-7">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-3 px-5 text-center text-sm font-medium text-slate-500 sm:px-8">
+          <span className="inline-flex items-center gap-2"><LockKeyhole className="h-4 w-4 text-indigo-500" /> Secure by design</span>
+          <span className="inline-flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-indigo-500" /> Every action explained</span>
+          <span className="inline-flex items-center gap-2"><Zap className="h-4 w-4 text-indigo-500" /> Built for everyday flow</span>
+        </div>
+      </section>
+
+      <section id="features" className="scroll-mt-20 px-5 py-20 sm:px-8 sm:py-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">Built for trust</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">Automation you can actually feel good about.</h2>
+            <p className="mt-5 text-lg leading-8 text-slate-600">Less tab switching. Less second guessing. More space to focus on what matters.</p>
+          </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            {features.map(({ icon: Icon, title, description }) => (
+              <article key={title} className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-200/60">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <h3 className="mt-5 text-lg font-semibold text-slate-950">{title}</h3>
+                <p className="mt-3 leading-7 text-slate-600">{description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="how-it-works" className="scroll-mt-20 bg-slate-950 px-5 py-20 text-white sm:px-8 sm:py-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-300">How it works</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">A better system in three simple moves.</h2>
+              <p className="mt-5 max-w-lg text-lg leading-8 text-slate-300">Start with the tools you know. Then let FlowPilot make the repeatable parts feel effortless.</p>
+              <a className="mt-8 inline-flex items-center text-sm font-semibold text-white transition hover:text-indigo-300" href="/login?returnTo=%2Fdashboard">
+                Start your workspace <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+            <ol className="grid gap-4 sm:grid-cols-3">
+              {steps.map((step) => (
+                <li key={step.number} className="rounded-2xl border border-white/10 bg-white/[0.06] p-6">
+                  <p className="text-sm font-semibold text-indigo-300">{step.number}</p>
+                  <h3 className="mt-8 text-lg font-semibold">{step.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-300">{step.description}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section id="pricing" className="scroll-mt-20 bg-slate-50 px-5 py-20 sm:px-8 sm:py-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">Simple pricing</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">Start small. Scale when you&apos;re ready.</h2>
+            <p className="mt-5 text-lg leading-8 text-slate-600">Choose a plan that matches the pace of your life and work.</p>
+          </div>
+          <div className="mt-12 grid gap-5 lg:grid-cols-3 lg:items-stretch">
+            {plans.map((plan) => (
+              <article key={plan.name} className={`relative rounded-2xl border p-7 shadow-sm ${plan.highlighted ? "border-indigo-600 bg-indigo-600 text-white shadow-xl shadow-indigo-200" : "border-slate-200 bg-white text-slate-900"}`}>
+                {plan.highlighted && <p className="absolute -top-3 left-6 rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">Most popular</p>}
+                <h3 className="text-lg font-semibold">{plan.name}</h3>
+                <p className={`mt-2 min-h-12 text-sm leading-6 ${plan.highlighted ? "text-indigo-100" : "text-slate-600"}`}>{plan.description}</p>
+                <div className="mt-6 flex items-end gap-2">
+                  <span className="text-4xl font-semibold tracking-tight">{plan.price}</span>
+                  <span className={`pb-1 text-sm ${plan.highlighted ? "text-indigo-100" : "text-slate-500"}`}>{plan.detail}</span>
+                </div>
+                <a className={`mt-7 flex h-11 items-center justify-center rounded-lg text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${plan.highlighted ? "bg-white text-indigo-700 hover:bg-indigo-50 focus-visible:outline-white" : "bg-slate-950 text-white hover:bg-slate-800 focus-visible:outline-slate-950"}`} href="/login?returnTo=%2Fdashboard">
+                  Get started
+                </a>
+                <ul className="mt-7 space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className={`flex items-start gap-2.5 text-sm ${plan.highlighted ? "text-indigo-50" : "text-slate-600"}`}>
+                      <Check className={`mt-0.5 h-4 w-4 shrink-0 ${plan.highlighted ? "text-white" : "text-emerald-600"}`} aria-hidden="true" />
+                      {feature}
                     </li>
                   ))}
                 </ul>
-                <footer className="card-footer">
-                  <p>
-                    <span aria-hidden="true">◷</span>
-                    {approved
-                      ? "Family itinerary update approved in this local preview."
-                      : "One prepared family update is waiting for your decision."}
-                  </p>
-                  <Button className="button-secondary" onClick={reviewPlan}>
-                    Review plan <span aria-hidden="true">→</span>
-                  </Button>
-                </footer>
               </article>
-
-              <aside
-                className={`approval-card ${approved ? "approved" : ""}`}
-                aria-labelledby="approval-title"
-              >
-                <div className="attention-head">
-                  <p className="eyebrow">{approved ? "Decision recorded" : "Your attention"}</p>
-                  <Status tone={approved ? "green" : "amber"}>
-                    {approved ? "Approved" : "Awaiting you"}
-                  </Status>
-                </div>
-                <h2 id="approval-title">
-                  {approved ? "Family update approved" : "One small decision"}
-                </h2>
-                <div className="message-preview">
-                  <span className="contact-avatar" aria-hidden="true">
-                    F
-                  </span>
-                  <div>
-                    <strong>Family itinerary update</strong>
-                    <p>“I’ll be in Bengaluru this Saturday…”</p>
-                  </div>
-                </div>
-                <p className="approval-copy">
-                  {approved
-                    ? "The local demo has recorded your approval. A real API would now send this exact, versioned draft."
-                    : "FlowPilot drafted this from your trip plan. It cannot send it until you approve the version shown here."}
-                </p>
-                {approved ? (
-                  <Button className="button-secondary" onClick={() => setApproved(false)}>
-                    Undo local decision
-                  </Button>
-                ) : (
-                  <div className="decision-actions">
-                    <Button className="button-primary" onClick={() => setApproved(true)}>
-                      {shadowMode ? "Record approval" : "Approve message"}
-                    </Button>
-                    <Button className="button-text" onClick={() => setApproved(true)}>
-                      Not now
-                    </Button>
-                  </div>
-                )}
-                <small className="boundary-note">
-                  <span aria-hidden="true">⌘</span>{" "}
-                  {shadowMode
-                    ? "Shadow mode prevents any external side effect."
-                    : "Messages are an approval-only action."}
-                </small>
-              </aside>
-            </section>
-
-            <section className="secondary-events" aria-label="Other active workflows">
-              <article>
-                <div className="event-icon client" aria-hidden="true">
-                  ◫
-                </div>
-                <div>
-                  <p className="eyebrow">
-                    Client Launch <span className="event-source">Email</span>
-                  </p>
-                  <h3>Northstar project opportunity</h3>
-                  <p>
-                    Requirements and a private workspace are ready. The reply remains in drafts.
-                  </p>
-                </div>
-                <Status tone="amber">Draft needs approval</Status>
-                <Button className="button-link" onClick={reviewPlan}>
-                  View plan →
-                </Button>
-              </article>
-              <article>
-                <div className="event-icon finance" aria-hidden="true">
-                  ⌁
-                </div>
-                <div>
-                  <p className="eyebrow">
-                    Salary Autopilot <span className="event-source">Sandbox</span>
-                  </p>
-                  <h3>Salary plan is ready to review</h3>
-                  <p>Budget suggestions were prepared. No transfer or purchase can be automated.</p>
-                </div>
-                <Status tone="neutral">Proposal only</Status>
-                <Button className="button-link" onClick={() => setActiveSection("autonomy")}>
-                  View safeguards →
-                </Button>
-              </article>
-            </section>
-
-            {showPlan && (
-              <section
-                className="plan-manifest"
-                id="plan-manifest"
-                aria-labelledby="manifest-title"
-              >
-                <div className="manifest-title">
-                  <div>
-                    <p className="eyebrow">
-                      Plan manifest <span className="event-source">plan_bengaluru_001</span>
-                    </p>
-                    <h2 id="manifest-title">Prepare Bengaluru trip</h2>
-                    <p>Every step, policy decision, and connector result stays visible.</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="dismiss-button"
-                    onClick={() => setShowPlan(false)}
-                    aria-label="Collapse plan manifest"
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="manifest-meta">
-                  <span>
-                    <b>4</b> actions
-                  </span>
-                  <span>
-                    <b>1</b> approval
-                  </span>
-                  <span>
-                    <b>5</b> services
-                  </span>
-                  <span>
-                    <b>0</b> sensitive fields exposed
-                  </span>
-                </div>
-                <ol className="plan-list">
-                  {planActions.map((action, index) => (
-                    <li key={action.id}>
-                      <span className="step-number">{index + 1}</span>
-                      <div className="plan-action">
-                        <div>
-                          <strong>{action.label}</strong>
-                          <small>
-                            {action.detail} · {action.connector}
-                          </small>
-                        </div>
-                        <div className="plan-action-meta">
-                          <Status tone={action.risk === "safe" ? "green" : "amber"}>
-                            {action.status}
-                          </Status>
-                          <button
-                            type="button"
-                            className="why-button"
-                            aria-label={`Why is ${action.label} included?`}
-                          >
-                            Why?
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-                <footer className="manifest-footer">
-                  <p>
-                    <span aria-hidden="true">✓</span> Policy checked against your Travel Autopilot
-                    order.
-                  </p>
-                  <Button className="button-secondary" onClick={() => setActiveSection("audit")}>
-                    Open audit trail
-                  </Button>
-                </footer>
-              </section>
-            )}
-
-            <section className="timeline-section" aria-labelledby="timeline-title">
-              <div className="section-intro">
-                <div>
-                  <p className="eyebrow">Execution timeline</p>
-                  <h2 id="timeline-title">Everything stays visible</h2>
-                </div>
-                <Status tone="green">3 actions verified</Status>
-              </div>
-              <ol className="timeline">
-                <li>
-                  <time>09:30</time>
-                  <span className="timeline-marker done" aria-hidden="true" />
-                  <div>
-                    <strong>Flight confirmation recognised</strong>
-                    <p>Gmail event interpreted as Travel.Booked · 97% confidence</p>
-                  </div>
-                  <em>Gmail</em>
-                </li>
-                <li>
-                  <time>09:31</time>
-                  <span className="timeline-marker done" aria-hidden="true" />
-                  <div>
-                    <strong>Trip workspace and reminders prepared</strong>
-                    <p>Ticket stored in your Travel folder and airport reminders created</p>
-                  </div>
-                  <em>Drive + Calendar</em>
-                </li>
-                <li>
-                  <time>09:32</time>
-                  <span
-                    className={`timeline-marker ${approved ? "done" : "waiting"}`}
-                    aria-hidden="true"
-                  />
-                  <div>
-                    <strong>
-                      {approved
-                        ? "Family approval recorded"
-                        : "Family itinerary is ready for approval"}
-                    </strong>
-                    <p>
-                      {approved
-                        ? "Demo decision recorded locally; no external message was sent."
-                        : "The prepared message is blocked by your messaging policy."}
-                    </p>
-                  </div>
-                  <em>{approved ? "Recorded" : "Messages"}</em>
-                </li>
-              </ol>
-            </section>
-          </>
-        )}
-
-        {activeSection === "orders" && (
-          <section className="settings-page" aria-labelledby="orders-title">
-            <div className="page-heading">
-              <div>
-                <p className="eyebrow">Policy builder</p>
-                <h1 id="orders-title">Standing Orders</h1>
-                <p className="lede">
-                  Tell FlowPilot what should happen repeatedly. It always shows the resulting
-                  boundaries before anything is saved.
-                </p>
-              </div>
-              <Status tone="green">1 active order</Status>
-            </div>
-            <div className="orders-layout">
-              <article className="rule-card">
-                <div className="rule-card-heading">
-                  <div>
-                    <span className="rule-icon" aria-hidden="true">
-                      ✈
-                    </span>
-                    <div>
-                      <p className="eyebrow">Travel Autopilot</p>
-                      <h2>Prepare every confirmed trip</h2>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className={`switch ${ruleEnabled ? "on" : ""}`}
-                    onClick={() => setRuleEnabled((value) => !value)}
-                    role="switch"
-                    aria-checked={ruleEnabled}
-                  >
-                    <span />
-                  </button>
-                </div>
-                <p>Whenever I book travel, prepare my itinerary and remind me about documents.</p>
-                <div className="rule-tags">
-                  <Status tone="green">Safe actions automatic</Status>
-                  <Status tone="amber">Messages ask every time</Status>
-                </div>
-                <footer>
-                  <span>
-                    {ruleEnabled
-                      ? "Enabled and policy checked"
-                      : "Paused — no future plans will run"}
-                  </span>
-                  <Button className="button-text">Edit order</Button>
-                </footer>
-              </article>
-              <article className="rule-builder">
-                <p className="eyebrow">New standing order</p>
-                <h2>From now on, whenever…</h2>
-                <label htmlFor="rule-draft" className="sr-only">
-                  Standing order instruction
-                </label>
-                <textarea
-                  id="rule-draft"
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  rows={3}
-                />
-                <div className="compiled-preview">
-                  <div>
-                    <span aria-hidden="true">⌘</span>
-                    <div>
-                      <strong>Compiled policy preview</strong>
-                      <p>
-                        Trigger: travel confirmation · Safe actions: calendar, files, drafting ·
-                        Approval: external messages
-                      </p>
-                    </div>
-                  </div>
-                  <Status tone="green">No money movement</Status>
-                </div>
-                <footer>
-                  <small>
-                    {ruleSaved
-                      ? "Draft saved in this local preview."
-                      : "Saving creates a policy draft for review — it does not run anything."}
-                  </small>
-                  <Button className="button-primary" onClick={() => setRuleSaved(true)}>
-                    Save policy draft
-                  </Button>
-                </footer>
-              </article>
-            </div>
-            <section className="explain-card">
-              <span aria-hidden="true">✦</span>
-              <div>
-                <h2>What gets checked before every plan?</h2>
-                <p>
-                  FlowPilot compares the event, current standing order, domain permission, budget, and
-                  any approval requirement. A plan is blocked when one of those checks does not
-                  pass.
-                </p>
-              </div>
-              <Button className="button-secondary" onClick={() => setActiveSection("audit")}>
-                See policy decisions
-              </Button>
-            </section>
-          </section>
-        )}
-
-        {activeSection === "autonomy" && (
-          <section className="settings-page" aria-labelledby="autonomy-title">
-            <div className="page-heading">
-              <div>
-                <p className="eyebrow">Safety controls</p>
-                <h1 id="autonomy-title">Autonomy Centre</h1>
-                <p className="lede">
-                  Choose where FlowPilot can help automatically, and where it should always ask first.
-                </p>
-              </div>
-              <Status tone="green">Level 2 autonomy</Status>
-            </div>
-            <section className="autonomy-summary">
-              <div>
-                <p className="eyebrow">Daily autonomy budget</p>
-                <h2>{budget} actions available today</h2>
-                <p>
-                  Safe connector actions consume your daily budget. Approval-only and blocked
-                  actions do not.
-                </p>
-                <input
-                  id="budget"
-                  type="range"
-                  min="4"
-                  max="20"
-                  value={budget}
-                  onChange={(event) => setBudget(Number(event.target.value))}
-                  aria-label="Daily autonomy budget"
-                />
-                <div className="range-labels">
-                  <span>4</span>
-                  <span>20 safe actions</span>
-                </div>
-              </div>
-              <div className="privacy-panel">
-                <span aria-hidden="true">⌘</span>
-                <h3>Safe by default</h3>
-                <p>
-                  Finance is never automatic. Messages, sharing, and repositories preserve their own
-                  approval boundaries.
-                </p>
-                <Button className="button-secondary" onClick={() => setShadowMode(true)}>
-                  Try shadow mode
-                </Button>
-              </div>
-            </section>
-            <section className="domain-grid" aria-label="Autonomy settings by domain">
-              {domains.map(([name, service, defaultMode, detail]) => {
-                const mode = domainModes[name] ?? defaultMode;
-                return (
-                  <article key={name} className={name === "Finance" ? "finance-domain" : ""}>
-                    <header>
-                      <div>
-                        <p className="eyebrow">{service}</p>
-                        <h2>{name}</h2>
-                      </div>
-                      <Status
-                        tone={
-                          mode === "Automatic"
-                            ? "green"
-                            : mode === "Never automatic"
-                              ? "red"
-                              : "amber"
-                        }
-                      >
-                        {mode}
-                      </Status>
-                    </header>
-                    <p>{detail}</p>
-                    <div className="segmented" role="group" aria-label={`${name} autonomy level`}>
-                      {["Automatic", "Ask every time", "Never automatic"].map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          disabled={name === "Finance" && option !== "Never automatic"}
-                          className={mode === option ? "selected" : ""}
-                          onClick={() => setDomainMode(name, option)}
-                        >
-                          {option === "Ask every time"
-                            ? "Ask"
-                            : option === "Never automatic"
-                              ? "Never"
-                              : "Auto"}
-                        </button>
-                      ))}
-                    </div>
-                  </article>
-                );
-              })}
-            </section>
-            <section className="trusted-contacts">
-              <div>
-                <p className="eyebrow">Trusted contacts</p>
-                <h2>Family messages stay in your hands</h2>
-                <p>
-                  FlowPilot can draft updates for your Family group, but every send is still an
-                  explicit approval.
-                </p>
-              </div>
-              <div className="contact-stack">
-                <span>F</span>
-                <span>M</span>
-                <span>A</span>
-              </div>
-              <Button className="button-secondary">Manage trusted contacts</Button>
-            </section>
-          </section>
-        )}
-
-        {activeSection === "graph" && (
-          <section className="settings-page" aria-labelledby="graph-title">
-            <div className="page-heading">
-              <div>
-                <p className="eyebrow">Permission-aware context</p>
-                <h1 id="graph-title">Personal Graph</h1>
-                <p className="lede">
-                  A small, private map of the people and projects you have allowed FlowPilot to use as
-                  context.
-                </p>
-              </div>
-              <Status tone="neutral">7 visible connections</Status>
-            </div>
-            <section className="graph-card">
-              <div className="graph-toolbar">
-                <p>
-                  <span className="online-dot" />
-                  Limited to approved context
-                </p>
-                <Button className="button-secondary">Manage permissions</Button>
-              </div>
-              <div
-                className="graph-stage"
-                role="img"
-                aria-label="A graph linking Sujit to family, a Bengaluru trip, Northstar project, personal goals, and calendar"
-              >
-                <span className="graph-line line-one" />
-                <span className="graph-line line-two" />
-                <span className="graph-line line-three" />
-                <span className="graph-line line-four" />
-                <button className="graph-node you">
-                  S<span>You</span>
-                </button>
-                <button className="graph-node family">
-                  F<span>Family</span>
-                </button>
-                <button className="graph-node trip">
-                  ✈<span>Bengaluru trip</span>
-                </button>
-                <button className="graph-node work">
-                  N<span>Northstar</span>
-                </button>
-                <button className="graph-node goals">
-                  ◎<span>Goals</span>
-                </button>
-                <button className="graph-node calendar">
-                  □<span>Calendar</span>
-                </button>
-              </div>
-              <footer>
-                <p>
-                  <span aria-hidden="true">⌘</span> This view never reveals private source data or
-                  adds new permissions.
-                </p>
-                <Button className="button-text">How context is used →</Button>
-              </footer>
-            </section>
-            <section className="context-table">
-              <div>
-                <p className="eyebrow">Context permissions</p>
-                <h2>What FlowPilot can reference</h2>
-              </div>
-              <div className="table-rows">
-                <div>
-                  <span>Family</span>
-                  <span>Draft itinerary updates</span>
-                  <Status tone="amber">Approval required</Status>
-                </div>
-                <div>
-                  <span>Northstar</span>
-                  <span>Private project preparation</span>
-                  <Status tone="green">Workspace only</Status>
-                </div>
-                <div>
-                  <span>Personal goals</span>
-                  <span>Planning suggestions</span>
-                  <Status tone="neutral">Read-only</Status>
-                </div>
-              </div>
-            </section>
-          </section>
-        )}
-
-        {activeSection === "audit" && (
-          <section className="settings-page" aria-labelledby="audit-title">
-            <div className="page-heading">
-              <div>
-                <p className="eyebrow">Append-only history</p>
-                <h1 id="audit-title">Audit trail</h1>
-                <p className="lede">
-                  A readable record of what was detected, decided, prepared, and verified.
-                </p>
-              </div>
-              <Button className="button-secondary">Export local view</Button>
-            </div>
-            <section className="audit-summary">
-              <div>
-                <strong>Today’s activity</strong>
-                <span>7 ledger entries</span>
-              </div>
-              <div>
-                <strong>Current policy</strong>
-                <span>Travel Autopilot · version 3</span>
-              </div>
-              <div>
-                <strong>Last decision</strong>
-                <span>
-                  {approved ? "Message approval recorded locally" : "No decision recorded"}
-                </span>
-              </div>
-            </section>
-            <ol className="audit-list">
-              <li>
-                <time>09:32:18</time>
-                <span className="audit-type policy">Policy</span>
-                <div>
-                  <strong>Family itinerary requires approval</strong>
-                  <p>
-                    Messaging domain is set to “Ask every time”. The plan was blocked before any
-                    send request.
-                  </p>
-                </div>
-                <Button className="button-text">Why?</Button>
-              </li>
-              <li>
-                <time>09:31:44</time>
-                <span className="audit-type verified">Verified</span>
-                <div>
-                  <strong>Weather checklist prepared</strong>
-                  <p>
-                    Weather connector returned successfully and the output was stored in the trip
-                    workspace.
-                  </p>
-                </div>
-                <Button className="button-text">View output</Button>
-              </li>
-              <li>
-                <time>09:31:09</time>
-                <span className="audit-type verified">Verified</span>
-                <div>
-                  <strong>Calendar reminders created</strong>
-                  <p>
-                    Airport and boarding reminders were verified against the Calendar connector
-                    response.
-                  </p>
-                </div>
-                <Button className="button-text">Undo</Button>
-              </li>
-              <li>
-                <time>09:30:02</time>
-                <span className="audit-type event">Event</span>
-                <div>
-                  <strong>Flight confirmation received</strong>
-                  <p>
-                    Gmail evidence was treated as untrusted input and extracted into redacted travel
-                    facts.
-                  </p>
-                </div>
-                <Button className="button-text">View facts</Button>
-              </li>
-            </ol>
-          </section>
-        )}
+            ))}
+          </div>
+        </div>
       </section>
+
+      <section id="contact" className="scroll-mt-20 px-5 py-20 sm:px-8 sm:py-28">
+        <div className="mx-auto max-w-5xl rounded-3xl bg-indigo-600 px-6 py-12 text-center text-white shadow-2xl shadow-indigo-200 sm:px-12 sm:py-16">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-200">Ready when you are</p>
+          <h2 className="mx-auto mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-5xl">Give your automations a trusted home.</h2>
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-indigo-100">Set up your workspace in minutes, or get in touch to talk through the workflows that matter most.</p>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <a className="inline-flex h-12 items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" href="/login?returnTo=%2Fdashboard">
+              Start for free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+            </a>
+            <a className="inline-flex h-12 items-center justify-center rounded-lg border border-indigo-400 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" href="mailto:hello@flowpilot.app">
+              <Mail className="mr-2 h-4 w-4" aria-hidden="true" /> Contact us
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-slate-200 px-5 py-10 sm:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <BrandMark />
+            <span className="font-semibold tracking-tight">FlowPilot</span>
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-slate-500">
+            <a className="transition hover:text-indigo-600" href="#features">Features</a>
+            <a className="transition hover:text-indigo-600" href="#pricing">Pricing</a>
+            <a className="transition hover:text-indigo-600" href="mailto:hello@flowpilot.app">Contact</a>
+            <a className="inline-flex items-center gap-1.5 transition hover:text-indigo-600" href="https://github.com" target="_blank" rel="noreferrer"><Github className="h-4 w-4" aria-hidden="true" /> GitHub</a>
+          </div>
+          <p className="text-sm text-slate-400">© {new Date().getFullYear()} FlowPilot. Move wisely.</p>
+        </div>
+      </footer>
     </main>
   );
 }

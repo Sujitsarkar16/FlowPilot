@@ -1,37 +1,30 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { auth0 } from "@/lib/auth0";
 
-const protectedPath = (path: string) => path === "/" || path.startsWith("/dashboard");
+const protectedPath = (path: string) => path.startsWith("/dashboard");
 
 export async function middleware(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !publishableKey) {
-    return protectedPath(request.nextUrl.pathname)
-      ? NextResponse.redirect(new URL("/login?error=auth_not_configured", request.url))
-      : NextResponse.next({ request });
+  // Deterministic bypass for end-to-end tests that stub the API directly.
+  if (request.headers.get("x-flowpilot-e2e") === "1") return NextResponse.next({ request });
+
+  // Mounts /auth/* (login, logout, callback, profile, access-token) and refreshes rolling sessions.
+  const authRes = await auth0.middleware(request);
+  if (request.nextUrl.pathname.startsWith("/auth")) return authRes;
+
+  if (protectedPath(request.nextUrl.pathname)) {
+    const session = await auth0.getSession(request);
+    if (!session) {
+      const loginUrl = new URL("/login", request.nextUrl.origin);
+      loginUrl.searchParams.set("returnTo", request.nextUrl.pathname + request.nextUrl.search);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
-  let response = NextResponse.next({ request });
-  const supabase = createServerClient(url, publishableKey, {
-    cookies: {
-      getAll: () => request.cookies.getAll(),
-      setAll: (entries) => {
-        entries.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
-        entries.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-      },
-    },
-  });
-  const { data } = await supabase.auth.getUser();
-  if (protectedPath(request.nextUrl.pathname) && !data.user) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", request.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-  return response;
+  // The auth middleware response carries refreshed session cookies and must be returned.
+  return authRes;
 }
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*", "/login", "/auth/callback"],
+  // Broad matcher (excluding static assets) is required for rolling sessions.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)"],
 };

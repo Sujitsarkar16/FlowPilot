@@ -1,11 +1,14 @@
 """Create persisted, policy-evaluated plans from matching standing orders."""
 
+import logging
 from collections.abc import Iterable, Mapping
+from time import perf_counter
 from uuid import UUID
 
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.metrics import metrics
 from app.db.repositories.connections import ConnectionRepository
 from app.db.repositories.events import EventRepository
 from app.db.repositories.plans import PlanRepository
@@ -23,6 +26,8 @@ from app.services.plan_customizer import PlanCustomizer
 from app.services.plan_graph import PlanGraph
 from app.services.policy_engine import PolicyEngine
 from app.workflows import build_workflow
+
+logger = logging.getLogger(__name__)
 
 
 class PlanningEventNotFoundError(Exception):
@@ -51,19 +56,25 @@ class PlanningService:
         self._policy = policy_engine or PolicyEngine()
 
     async def create(self, user: User, event_id: UUID, *, replay: bool = False) -> Plan:
+        started = perf_counter()
         event = await self._events.get_life(user.id, event_id)
         if event is None:
+            metrics.observe("plans", "failed", perf_counter() - started)
             raise PlanningEventNotFoundError
         if not replay:
             existing = await self._plans.latest_for_event(user.id, event_id)
             if existing is not None:
+                self._observe("existing", started, event.id, existing.id)
                 return existing
         rule = await self._first_matching_rule(user.id, event)
         if rule is None:
+            metrics.observe("plans", "failed", perf_counter() - started)
             raise NoMatchingStandingOrderError("No enabled standing order matches this event")
         graph = build_workflow(event, rule)
         customization = await self._customizer.customize(graph)
-        return await self._persist(user, event, rule, customization.graph, customization.rationale)
+        return await self._persist(
+            user, event, rule, customization.graph, customization.rationale, started
+        )
 
     async def plan(self, user: User, event_id: UUID, *, replay: bool = False) -> Plan:
         """Compatibility alias for callers that name this operation ``plan``."""
@@ -90,6 +101,7 @@ class PlanningService:
         rule: CompiledRule,
         graph: PlanGraph,
         rationale: str,
+        started: float,
     ) -> Plan:
         connections = await self._connections.list_connected(user.id)
         plan = Plan(
@@ -99,6 +111,7 @@ class PlanningService:
             summary=event.summary,
             planner_rationale=rationale,
             status=PlanStatus.POLICY_CHECKED,
+            is_shadow=user.default_autonomy.value == "observe",
         )
         try:
             await self._plans.add(plan)
@@ -110,6 +123,7 @@ class PlanningService:
                     user.default_autonomy,
                     connections,
                     template_mode=candidate.approval_mode,
+                    category_behaviors=user.autonomy_preferences,
                 )
                 action = Action(
                     plan=plan,
@@ -164,8 +178,24 @@ class PlanningService:
             await self._session.commit()
         except Exception:
             await self._session.rollback()
+            metrics.observe("plans", "failed", perf_counter() - started)
             raise
-        return await self._plans.get(user.id, plan.id) or plan
+        persisted = await self._plans.get(user.id, plan.id) or plan
+        self._observe("created", started, event.id, persisted.id)
+        return persisted
+
+    @staticmethod
+    def _observe(outcome: str, started: float, event_id: UUID, plan_id: UUID) -> None:
+        duration = perf_counter() - started
+        metrics.observe("plans", outcome, duration)
+        logger.info(
+            "plan creation completed",
+            extra={
+                "event_id": str(event_id),
+                "plan_id": str(plan_id),
+                "duration_ms": duration * 1000,
+            },
+        )
 
 
 def _conditions_match(

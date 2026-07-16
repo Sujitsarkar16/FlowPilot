@@ -48,7 +48,7 @@ class RollbackService:
         if action.status is not ActionStatus.COMPLETED:
             raise RollbackError("Only completed actions can be rolled back")
         candidate = CandidateAction(
-            action_key=str(action.id),
+            action_key=f"rollback.{action.id.hex}",
             action_type=action.action_type,
             input=action.input,
             risk_level=action.risk_level,

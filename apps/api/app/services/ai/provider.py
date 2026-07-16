@@ -1,7 +1,7 @@
-"""Configurable production adapter for OpenAI-compatible chat completions.
+"""Production adapter for OpenRouter chat completions.
 
-Uses the already-present ``httpx`` dependency and JSON-mode output. Any provider that
-speaks the ``/chat/completions`` contract works by pointing ``ai_base_url`` at it.
+Uses the already-present ``httpx`` dependency and OpenRouter's OpenAI-compatible
+``/chat/completions`` endpoint with JSON-mode output.
 """
 
 import httpx
@@ -18,7 +18,7 @@ from app.services.ai.schemas import (
 )
 
 
-class OpenAICompatibleProvider(AIProvider):
+class OpenRouterProvider(AIProvider):
     def __init__(
         self,
         *,

@@ -42,7 +42,7 @@ class EventRepository:
     async def get_life(self, user_id: UUID, event_id: UUID) -> LifeEvent | None:
         statement = (
             select(LifeEvent)
-            .options(selectinload(LifeEvent.entities))
+            .options(selectinload(LifeEvent.entities), selectinload(LifeEvent.raw_event))
             .where(LifeEvent.id == event_id, LifeEvent.user_id == user_id)
         )
         return cast(LifeEvent | None, await self.session.scalar(statement))

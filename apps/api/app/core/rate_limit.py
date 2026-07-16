@@ -62,7 +62,7 @@ class RateLimiter:
 def rate_limit_bucket(path: str) -> str | None:
     if path == "/api/v1/events/manual":
         return "manual"
-    if path.startswith("/api/v1/webhooks/"):
+    if path.startswith(("/api/v1/webhooks/", "/api/v1/mock-bank/")):
         return "webhook"
     if path.startswith("/api/v1/ai/") or path.endswith(("/interpret", "/plan")):
         return "ai"

@@ -9,7 +9,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response
+from starlette.responses import PlainTextResponse, Response
 
 from app.api.routes.actions import router as actions_router
 from app.api.routes.approvals import router as approvals_router
@@ -22,10 +22,12 @@ from app.api.routes.me import router as me_router
 from app.api.routes.mock_bank import router as mock_bank_router
 from app.api.routes.plans import execution_router
 from app.api.routes.plans import router as plans_router
+from app.api.routes.preferences import router as preferences_router
 from app.api.routes.standing_orders import router as standing_orders_router
 from app.api.routes.telegram_connection import router as telegram_connection_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging, request_id_context, route_context
+from app.core.metrics import metrics
 from app.core.rate_limit import RateLimitMiddleware, rate_limiter_from_settings
 from app.core.security_headers import RequestBodyLimitMiddleware, SecurityHeadersMiddleware
 from app.db.session import dispose_engine
@@ -73,7 +75,7 @@ def create_app() -> FastAPI:
     api.add_middleware(RequestContextMiddleware)
     api.add_middleware(
         CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.cors_origins],
+        allow_origins=[str(origin).rstrip("/") for origin in settings.cors_origins],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
@@ -88,6 +90,7 @@ def create_app() -> FastAPI:
     api.include_router(dashboard_router)
     api.include_router(plans_router)
     api.include_router(execution_router)
+    api.include_router(preferences_router)
     api.include_router(actions_router)
     api.include_router(standing_orders_router)
     api.include_router(connections_router)
@@ -99,6 +102,14 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         """Return a dependency-free process health signal."""
         return {"status": "ok"}
+
+    if settings.metrics_enabled:
+
+        @api.get("/metrics", include_in_schema=False)
+        async def prometheus_metrics() -> PlainTextResponse:
+            return PlainTextResponse(
+                metrics.render(), media_type="text/plain; version=0.0.4; charset=utf-8"
+            )
 
     return api
 

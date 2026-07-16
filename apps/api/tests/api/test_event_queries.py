@@ -8,8 +8,9 @@ from httpx import ASGITransport, AsyncClient
 from app.api.dependencies.auth import get_current_user
 from app.api.routes.events import router
 from app.db.session import get_session
-from app.models.enums import EventSource, Importance, LifeEventType
+from app.models.enums import EventSource, Importance, LifeEventType, PlanStatus
 from app.models.event import EventEntity, LifeEvent, RawEvent
+from app.models.plan import Plan
 from app.models.user import User
 
 
@@ -94,3 +95,30 @@ async def test_type_filter_narrows_results(session: object) -> None:
         miss = await client.get("/api/v1/events", params={"type": "salary_credited"})
         assert len(match.json()["items"]) == 1
         assert miss.json()["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_list_includes_the_latest_plan_summary(session: object) -> None:
+    user = User(auth_subject="query-plan-summary")
+    session.add(user)  # type: ignore[attr-defined]
+    await session.commit()  # type: ignore[attr-defined]
+    event = await _seed_event(session, user, "Trip with a plan")
+    session.add(  # type: ignore[attr-defined]
+        Plan(
+            user_id=user.id,
+            source_event_id=event.id,
+            objective="Prepare the trip",
+            summary=None,
+            planner_rationale=None,
+            status=PlanStatus.DRAFT,
+        )
+    )
+    await session.commit()  # type: ignore[attr-defined]
+
+    async with _client(session, user) as client:
+        response = await client.get("/api/v1/events")
+        assert response.status_code == 200
+        latest_plan = response.json()["items"][0]["latest_plan"]
+        assert latest_plan["objective"] == "Prepare the trip"
+        assert latest_plan["status"] == "draft"
+        assert latest_plan["action_count"] == 0

@@ -1,4 +1,4 @@
-"""Authenticated user dependency backed only by verified Supabase claims."""
+"""Authenticated user dependency backed only by verified Auth0 claims."""
 
 from functools import lru_cache
 

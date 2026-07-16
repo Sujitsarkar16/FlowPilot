@@ -24,6 +24,7 @@ from app.services.event_classifier import EventClassifier
 from app.services.event_ingestion import EventIngestionService
 from app.services.event_normalizer import normalize
 from app.services.event_queries import EventFilters, EventQueryService
+from app.services.planning import NoMatchingStandingOrderError, PlanningService
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
 
@@ -69,12 +70,21 @@ async def create_manual_event(
 
     outcome = await EventClassifier(session, provider).classify(raw)
     await EntityExtractor(session, provider).extract(outcome.life_event, outcome.sanitized.text)
+
+    plan_id = None
+    try:
+        plan = await PlanningService(session).create(current_user, outcome.life_event.id)
+        plan_id = plan.id
+    except NoMatchingStandingOrderError:
+        pass  # No compiled standing order yet; the UI will show "No action plan yet"
+
     return ManualEventResponse(
         id=outcome.life_event.id,
         raw_event_id=raw.id,
         type=outcome.life_event.type,
         status=raw.status,
         is_duplicate=False,
+        plan_id=plan_id,
     )
 
 

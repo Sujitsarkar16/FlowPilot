@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -42,6 +42,33 @@ class PlanRepository:
             .limit(1)
         )
         return cast(Plan | None, await self.session.scalar(statement))
+
+    async def latest_for_events(
+        self, user_id: UUID, event_ids: Iterable[UUID]
+    ) -> dict[UUID, Plan]:
+        ids = list(event_ids)
+        if not ids:
+            return {}
+        ranked = (
+            select(
+                Plan.id,
+                func.row_number()
+                .over(
+                    partition_by=Plan.source_event_id,
+                    order_by=(Plan.created_at.desc(), Plan.id.desc()),
+                )
+                .label("rank"),
+            )
+            .where(Plan.user_id == user_id, Plan.source_event_id.in_(ids))
+            .subquery()
+        )
+        statement = (
+            select(Plan)
+            .join(ranked, Plan.id == ranked.c.id)
+            .options(selectinload(Plan.actions))
+            .where(ranked.c.rank == 1)
+        )
+        return {plan.source_event_id: plan for plan in await self.session.scalars(statement)}
 
     async def add_actions(self, actions: Iterable[Action]) -> list[Action]:
         """Persist actions after their parent plan has been flushed."""

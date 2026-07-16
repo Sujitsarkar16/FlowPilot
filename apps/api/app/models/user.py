@@ -2,10 +2,10 @@
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String
+from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base
+from app.db.base import Base, jsonb
 from app.models.enums import AutonomyLevel, db_enum
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -26,6 +26,9 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     default_autonomy: Mapped[AutonomyLevel] = mapped_column(
         db_enum(AutonomyLevel), default=AutonomyLevel.SUGGEST, nullable=False
     )
+    autonomy_preferences: Mapped[dict[str, str]] = mapped_column(jsonb, default=dict, nullable=False)
+    daily_message_cap: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
+    daily_calendar_cap: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
 
     connections: Mapped[list["Connection"]] = relationship(back_populates="user")
     standing_orders: Mapped[list["StandingOrder"]] = relationship(back_populates="user")

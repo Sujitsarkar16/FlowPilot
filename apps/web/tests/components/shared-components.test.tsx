@@ -95,6 +95,11 @@ describe("shared status and feedback components", () => {
       />,
     );
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Delete connection?");
+    expect(screen.getByRole("button", { name: "Delete connection" })).toHaveFocus();
+    await user.keyboard("{Tab}");
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+    await user.keyboard("{Tab}");
+    expect(screen.getByRole("button", { name: "Delete connection" })).toHaveFocus();
     await user.keyboard("{Escape}");
     expect(onCancel).toHaveBeenCalledOnce();
     await user.click(screen.getByRole("button", { name: "Delete connection" }));

@@ -3,18 +3,13 @@
 import { useState } from "react";
 import { LogOut, UserRound } from "lucide-react";
 
-import { createClient } from "@/lib/supabase/client";
-
 export function UserMenu() {
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  async function signOut() {
+  function signOut() {
     setSigningOut(true);
-    try {
-      await createClient().auth.signOut();
-    } finally {
-      window.location.assign("/login");
-    }
+    // Full navigation to the Auth0 logout route ends the session and clears cookies.
+    window.location.assign("/auth/logout");
   }
   return (
     <div className="relative">

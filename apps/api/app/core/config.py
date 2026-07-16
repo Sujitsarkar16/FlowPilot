@@ -21,10 +21,8 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=5, ge=1, le=50)
     database_max_overflow: int = Field(default=10, ge=0, le=50)
     cors_origins: tuple[AnyHttpUrl, ...] = ()
-    supabase_url: AnyHttpUrl | None = None
-    supabase_jwt_audience: str | None = None
-    supabase_jwt_issuer: AnyHttpUrl | None = None
-    supabase_jwks_url: AnyHttpUrl | None = None
+    auth0_domain: str | None = None
+    auth0_audience: str | None = None
     encryption_key: SecretStr | None = None
     encryption_previous_keys: tuple[SecretStr, ...] = ()
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
@@ -32,6 +30,8 @@ class Settings(BaseSettings):
     rate_limit_webhooks: int = Field(default=60, ge=1, le=10000)
     rate_limit_ai_requests: int = Field(default=10, ge=1, le=10000)
     request_body_limit_bytes: int = Field(default=1_048_576, ge=1024, le=52_428_800)
+    webhook_timestamp_window_seconds: int = Field(default=300, ge=1, le=3600)
+    metrics_enabled: bool = False
     google_client_id: str | None = None
     google_client_secret: SecretStr | None = None
     google_redirect_uri: AnyHttpUrl = AnyHttpUrl(
@@ -48,9 +48,9 @@ class Settings(BaseSettings):
     mock_bank_webhook_secret: SecretStr | None = None
     client_availability_start_hour: int = Field(default=10, ge=0, le=23)
     client_availability_end_hour: int = Field(default=16, ge=1, le=24)
-    ai_base_url: str = "https://api.openai.com/v1"
-    ai_api_key: SecretStr | None = None
-    ai_model: str = "gpt-4o-mini"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_api_key: SecretStr | None = None
+    openrouter_model: str = "google/gemini-2.5-flash"
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -71,9 +71,9 @@ class Settings(BaseSettings):
         if self.client_availability_start_hour >= self.client_availability_end_hour:
             raise ValueError("client availability start must precede its end")
         if self.environment == "production":
-            required = (self.supabase_url, self.supabase_jwt_audience, self.encryption_key)
+            required = (self.auth0_domain, self.auth0_audience, self.encryption_key)
             if not all(required):
-                raise ValueError("production requires Supabase settings and ENCRYPTION_KEY")
+                raise ValueError("production requires Auth0 settings and ENCRYPTION_KEY")
         return self
 
 

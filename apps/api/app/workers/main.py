@@ -4,10 +4,13 @@ import asyncio
 import logging
 import signal
 from collections.abc import Callable
+from time import perf_counter
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.logging import bind_log_context
+from app.core.metrics import metrics
 from app.db.session import get_session_factory
 from app.models.enums import JobStatus
 from app.services.action_executor import ActionExecutor
@@ -46,14 +49,26 @@ class DurableWorker:
             job = await queue.claim_next(self.worker_id)
             if job is None:
                 return False
-            try:
-                await ActionExecutor(
-                    session, queue=queue, connectors=self._connector_factory(session)
-                ).execute(job)
-            except Exception:
-                logger.exception("worker job failed", extra={"job_id": str(job.id)})
-                if job.status is JobStatus.RUNNING:
-                    await queue.dead_letter(job, "Worker execution failed")
+            started = perf_counter()
+            with bind_log_context(job_id=str(job.id)):
+                try:
+                    await ActionExecutor(
+                        session, queue=queue, connectors=self._connector_factory(session)
+                    ).execute(job)
+                    outcome = (
+                        "succeeded"
+                        if job.status is JobStatus.COMPLETED
+                        else "retried"
+                        if job.status is JobStatus.RETRYING
+                        else "failed"
+                    )
+                    metrics.observe("executions", outcome, perf_counter() - started)
+                    logger.info("worker job completed", extra={"duration_ms": (perf_counter() - started) * 1000})
+                except Exception:
+                    metrics.observe("executions", "failed", perf_counter() - started)
+                    logger.exception("worker job failed")
+                    if job.status is JobStatus.RUNNING:
+                        await queue.dead_letter(job, "Worker execution failed")
             return True
 
     async def run(self) -> None:

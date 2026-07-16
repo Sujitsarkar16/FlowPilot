@@ -1,27 +1,18 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const signInWithOtp = vi.fn();
-
-vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({ auth: { signInWithOtp } }),
-}));
+import { describe, expect, it } from "vitest";
 
 import LoginPage from "@/app/login/page";
 
 describe("login", () => {
-  beforeEach(() => signInWithOtp.mockResolvedValue({ error: null }));
-
-  it("sends a magic link and reports success", async () => {
-    const user = userEvent.setup();
+  it("links to Auth0 universal login for sign in and sign up", () => {
     render(<LoginPage />);
-    await user.type(screen.getByLabelText("Email address"), "person@example.com");
-    await user.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
-    expect(signInWithOtp).toHaveBeenCalledWith({
-      email: "person@example.com",
-      options: { emailRedirectTo: "http://localhost:3000/auth/callback?next=/dashboard" },
-    });
-    expect(await screen.findByRole("status")).toHaveTextContent("Check your inbox");
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/auth/login?returnTo=%2Fdashboard",
+    );
+    expect(screen.getByRole("link", { name: "Create an account" })).toHaveAttribute(
+      "href",
+      "/auth/login?screen_hint=signup&returnTo=%2Fdashboard",
+    );
   });
 });

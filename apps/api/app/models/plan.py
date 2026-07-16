@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, String, Text, Uuid
+from sqlalchemy import Boolean, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -31,6 +31,8 @@ class Plan(UUIDPrimaryKeyMixin, TimestampMixin, VersionedMixin, Base):
     status: Mapped[PlanStatus] = mapped_column(
         db_enum(PlanStatus), default=PlanStatus.DRAFT, nullable=False
     )
+    is_shadow: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    execution_requested: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="plans")
     source_event: Mapped["LifeEvent"] = relationship(back_populates="plans")

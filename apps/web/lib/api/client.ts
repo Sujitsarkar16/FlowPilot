@@ -8,6 +8,16 @@ import type {
   ApiRequestOptions,
   Connection,
   CurrentUser,
+  DashboardSummary,
+  EventDetail,
+  EventListQuery,
+  EventListResponse,
+  Plan,
+  PlanAction,
+  Preferences,
+  PreferencesUpdateInput,
+  TimelineQuery,
+  TimelineResponse,
   ManualEventInput,
   ManualEventResponse,
   OAuthStartResponse,
@@ -17,7 +27,7 @@ import type {
   StandingOrderUpdateInput,
   TelegramConnectionInput,
 } from "@/lib/api/types";
-import { createClient } from "@/lib/supabase/client";
+import { getAccessToken as fetchAuth0AccessToken } from "@auth0/nextjs-auth0/client";
 
 interface ApiClientOptions {
   baseUrl?: string;
@@ -25,6 +35,15 @@ interface ApiClientOptions {
   fetchFn?: typeof fetch;
   getAccessToken?: () => Promise<string | null>;
   onUnauthorized?: () => Promise<void> | void;
+}
+
+function withQuery(path: string, query: object = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
+  }
+  const encoded = params.toString();
+  return encoded ? `${path}?${encoded}` : path;
 }
 
 function errorMessage(status: number, body: ApiErrorBody | undefined) {
@@ -45,13 +64,18 @@ async function jsonBody(response: Response) {
 }
 
 async function browserAccessToken() {
-  const { data } = await createClient().auth.getSession();
-  return data.session?.access_token ?? null;
+  try {
+    // Fetches (and silently refreshes) the Auth0 access token via /auth/access-token.
+    return (await fetchAuth0AccessToken()) ?? null;
+  } catch {
+    // No active session or a failed refresh — treat as unauthenticated.
+    return null;
+  }
 }
 
 async function browserUnauthorized() {
-  await createClient().auth.signOut();
-  if (typeof window !== "undefined") window.location.assign("/login");
+  // A 401 means the session is gone or unusable; end it via the Auth0 logout route.
+  if (typeof window !== "undefined") window.location.assign("/auth/logout");
 }
 
 export function createApiClient(options: ApiClientOptions = {}): ApiClient {
@@ -130,6 +154,41 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
   return {
     request,
     getMe: (requestOptions) => request<CurrentUser>("/api/v1/me", requestOptions),
+    getDashboardSummary: (requestOptions) =>
+      request<DashboardSummary>("/api/v1/dashboard/summary", requestOptions),
+    listEvents: (query: EventListQuery = {}, requestOptions) =>
+      request<EventListResponse>(withQuery("/api/v1/events", query), requestOptions),
+    getEvent: (eventId, requestOptions) =>
+      request<EventDetail>(`/api/v1/events/${eventId}`, requestOptions),
+    getEventTimeline: (eventId, query: TimelineQuery = {}, requestOptions) =>
+      request<TimelineResponse>(
+        withQuery(`/api/v1/events/${eventId}/timeline`, query),
+        requestOptions,
+      ),
+    getPlan: (planId, requestOptions) => request<Plan>(`/api/v1/plans/${planId}`, requestOptions),
+    executePlan: (planId, requestOptions) =>
+      request<Plan>(`/api/v1/plans/${planId}/execute`, { ...requestOptions, method: "POST" }),
+    cancelPlan: (planId, requestOptions) =>
+      request<Plan>(`/api/v1/plans/${planId}/cancel`, { ...requestOptions, method: "POST" }),
+    promotePlan: (planId, requestOptions) =>
+      request<Plan>(`/api/v1/plans/${planId}/promote`, { ...requestOptions, method: "POST" }),
+    retryAction: (actionId, requestOptions) =>
+      request<PlanAction>(`/api/v1/actions/${actionId}/retry`, {
+        ...requestOptions,
+        method: "POST",
+      }),
+    rollbackAction: (actionId, requestOptions) =>
+      request<PlanAction>(`/api/v1/actions/${actionId}/rollback`, {
+        ...requestOptions,
+        method: "POST",
+      }),
+    getPreferences: (requestOptions) => request<Preferences>("/api/v1/preferences", requestOptions),
+    updatePreferences: (input, requestOptions) =>
+      request<Preferences>("/api/v1/preferences", {
+        ...requestOptions,
+        body: input as PreferencesUpdateInput,
+        method: "PATCH",
+      }),
     createManualEvent: (input, requestOptions) =>
       request<ManualEventResponse>("/api/v1/events/manual", {
         ...requestOptions,

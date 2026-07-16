@@ -44,7 +44,7 @@ describe("ManualEventForm", () => {
         category_hint: null,
       }),
     );
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/events/event-1"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/dashboard/events/event-1"));
   });
 
   it("prevents submitting an empty event", async () => {

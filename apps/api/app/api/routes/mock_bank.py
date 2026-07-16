@@ -1,16 +1,14 @@
 """Secret-protected simulated salary-credit intake; it never transfers funds."""
 
 from decimal import ROUND_DOWN, Decimal
-from secrets import compare_digest
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.db.repositories.events import EventRepository
-from app.db.repositories.plans import PlanRepository
+from app.core.webhooks import WebhookVerificationError, verify_hmac_signature
 from app.db.repositories.users import UserRepository
 from app.db.session import get_session
 from app.models.enums import Importance, LifeEventType, RawEventStatus
@@ -86,22 +84,30 @@ def calculate_allocations(payload: SalaryCreditWebhook) -> tuple[dict[str, float
 )
 async def receive_salary_credit(
     payload: SalaryCreditWebhook,
-    x_mock_bank_secret: str | None = Header(default=None),
+    request: Request,
+    x_mock_bank_timestamp: str | None = Header(default=None),
+    x_mock_bank_signature: str | None = Header(default=None),
     session: AsyncSession = Depends(get_session),
 ) -> SalaryCreditResponse:
-    """Persist one trusted mock salary event and plan it through the normal policy path."""
+    """Persist one authenticated salary event; the transaction ID is the durable replay nonce."""
     settings: Settings = get_settings()
     expected = settings.mock_bank_webhook_secret
     if expected is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Mock bank is disabled"
         )
-    if not x_mock_bank_secret or not compare_digest(
-        x_mock_bank_secret, expected.get_secret_value()
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid mock bank secret"
+    try:
+        verify_hmac_signature(
+            secret=expected.get_secret_value(),
+            timestamp=x_mock_bank_timestamp,
+            signature=x_mock_bank_signature,
+            body=await request.body(),
+            window_seconds=settings.webhook_timestamp_window_seconds,
         )
+    except WebhookVerificationError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook request"
+        ) from None
     user = await UserRepository(session).get(payload.user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -116,21 +122,9 @@ async def receive_salary_credit(
     ingestion = await EventIngestionService(session).ingest(
         user.id, normalize(source), idempotency_key=payload.transaction_id
     )
-    events = EventRepository(session)
     if ingestion.is_duplicate:
-        event = await events.get_life_by_raw(user.id, ingestion.raw_event.id)
-        if event is None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail="Salary event is still processing"
-            )
-        plan = await PlanRepository(session).latest_for_event(user.id, event.id)
-        allocations, warning = calculate_allocations(payload)
-        return SalaryCreditResponse(
-            event_id=event.id,
-            plan_id=plan.id if plan else None,
-            is_duplicate=True,
-            allocations=allocations,
-            overspending_warning=warning,
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Webhook replay rejected"
         )
 
     allocations, warning = calculate_allocations(payload)

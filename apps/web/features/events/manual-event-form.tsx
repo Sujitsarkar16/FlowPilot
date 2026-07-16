@@ -42,13 +42,13 @@ export function ManualEventForm() {
     setError(null);
     setClassified(null);
     try {
-      const result = await api.createManualEvent({
-        text: text.trim(),
-        category_hint: hint || null,
-      });
+      const result = await api.createManualEvent(
+        { text: text.trim(), category_hint: hint || null },
+        { timeoutMs: 60_000 }, // AI classification + entity extraction can take ~20–30 s
+      );
       setClassified(result.type);
       setPhase("done");
-      router.push(`/events/${result.id}`);
+      router.push(`/dashboard/events/${result.id}`);
     } catch (caught) {
       setError(caught);
       setPhase("idle");

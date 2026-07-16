@@ -26,14 +26,21 @@ export function ConfirmDialog({
   title,
 }: ConfirmDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
     confirmRef.current?.focus();
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key === "Escape") return onCancel();
+      if (event.key !== "Tab") return;
+      const buttons = dialogRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
+      if (!buttons?.length) return;
+      const first = buttons[0], last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
-    document.addEventListener("keydown", escape);
-    return () => document.removeEventListener("keydown", escape);
+    document.addEventListener("keydown", trapFocus);
+    return () => document.removeEventListener("keydown", trapFocus);
   }, [onCancel, open]);
   if (!open) return null;
   return (
@@ -44,7 +51,7 @@ export function ConfirmDialog({
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-description"
     >
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" ref={dialogRef}>
         <h2 className="text-lg font-semibold text-slate-950" id="confirm-dialog-title">
           {title}
         </h2>

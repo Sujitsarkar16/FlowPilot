@@ -41,6 +41,10 @@ class PlanSummary(BaseModel):
     objective: str
     status: str
     action_count: int
+    completed_actions: int = 0
+    pending_actions: int = 0
+    failed_actions: int = 0
+    is_shadow: bool = False
 
 
 class EventListItem(BaseModel):
@@ -53,6 +57,7 @@ class EventListItem(BaseModel):
     summary: str
     occurred_at: datetime
     entities: list[EventEntityRead] = []
+    latest_plan: PlanSummary | None = None
 
 
 class EventList(BaseModel):
@@ -61,4 +66,5 @@ class EventList(BaseModel):
 
 
 class EventDetail(LifeEventRead):
+    source: EventSource
     latest_plan: PlanSummary | None = None

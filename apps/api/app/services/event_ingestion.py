@@ -1,17 +1,22 @@
 """Idempotent ingestion of normalized events into ``raw_events``."""
 
+import logging
 from dataclasses import dataclass
+from time import perf_counter
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.metrics import metrics
 from app.db.repositories.events import EventRepository
 from app.models.enums import RawEventStatus
 from app.models.event import RawEvent
 from app.schemas.raw_sources import NormalizedEvent
 from app.services.audit import AuditService
 from app.services.event_fingerprint import compute_event_fingerprint
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -33,6 +38,7 @@ class EventIngestionService:
         idempotency_key: str | None = None,
     ) -> IngestionResult:
         """Insert one raw event per unique fingerprint; replays are no-ops."""
+        started = perf_counter()
         fingerprint = compute_event_fingerprint(
             normalized.source, normalized.source_event_id, normalized.fingerprint_fields
         )
@@ -40,6 +46,7 @@ class EventIngestionService:
             user_id, normalized.source.value, fingerprint
         )
         if existing is not None:
+            self._observe("duplicate", started, existing.id)
             return IngestionResult(existing, is_duplicate=True)
 
         raw = RawEvent(
@@ -73,7 +80,22 @@ class EventIngestionService:
                 user_id, normalized.source.value, fingerprint
             )
             if duplicate is None:
+                metrics.observe("ingestion", "failed", perf_counter() - started)
                 raise
+            self._observe("duplicate", started, duplicate.id)
             return IngestionResult(duplicate, is_duplicate=True)
+        except Exception:
+            metrics.observe("ingestion", "failed", perf_counter() - started)
+            raise
         await self._session.refresh(raw)
+        self._observe("created", started, raw.id)
         return IngestionResult(raw, is_duplicate=False)
+
+    @staticmethod
+    def _observe(outcome: str, started: float, event_id: UUID) -> None:
+        duration = perf_counter() - started
+        metrics.observe("ingestion", outcome, duration)
+        logger.info(
+            "event ingestion completed",
+            extra={"event_id": str(event_id), "duration_ms": duration * 1000},
+        )

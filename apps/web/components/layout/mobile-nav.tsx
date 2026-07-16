@@ -3,32 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { dashboardNavigation, isCurrentRoute } from "@/components/layout/sidebar";
-import { cn } from "@/lib/utils";
+import { activeNavigationHref, dashboardNavigation } from "@/components/layout/sidebar";
+import { Button } from "@/components/ui/button";
 
 export function MobileNav() {
-  const pathname = usePathname();
+  const activeHref = activeNavigationHref(usePathname());
   return (
-    <nav
-      aria-label="Primary navigation"
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white px-1 pb-[env(safe-area-inset-bottom)] shadow-lg md:hidden"
-    >
+    <nav aria-label="Primary navigation" className="fixed inset-x-0 bottom-0 z-40 flex gap-1 overflow-x-auto border-t border-slate-200 bg-white px-2 pb-[env(safe-area-inset-bottom)] shadow-lg md:hidden">
       {dashboardNavigation.map(({ href, icon: Icon, label }) => {
-        const current = isCurrentRoute(pathname, href);
-        return (
-          <Link
-            aria-current={current ? "page" : undefined}
-            className={cn(
-              "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-sm text-[10px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500",
-              current ? "text-indigo-700" : "text-slate-600",
-            )}
-            href={href}
-            key={href}
-          >
+        const current = activeHref === href;
+        return <Button asChild className="h-16 min-w-20 shrink-0 flex-col gap-1 px-2 text-[11px]" key={href} size="sm" style={current ? { backgroundColor: "#4f46e5", color: "#fff" } : undefined} variant={current ? "default" : "ghost"}>
+          <Link aria-current={current ? "page" : undefined} href={href}>
             <Icon aria-hidden="true" size={18} />
-            <span>{label}</span>
+            <span className="whitespace-nowrap">{label}</span>
           </Link>
-        );
+        </Button>;
       })}
     </nav>
   );

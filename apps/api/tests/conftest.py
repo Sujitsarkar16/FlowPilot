@@ -1,9 +1,17 @@
+import os
 from collections.abc import AsyncIterator, Callable
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
+
+# Application settings accept Supabase URLs only. Database-focused tests inject their own
+# in-memory SQLite session below, so this URL is never contacted by the test suite.
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:password@db.example.supabase.co:5432/postgres",
+)
 
 import app.models  # noqa: F401
 from app.connectors.base import MockConnector
@@ -37,4 +45,9 @@ def fake_ai() -> Callable[[Callable[[str, str, type], dict[str, object]]], FakeA
 
 @pytest.fixture
 def fake_connectors() -> ConnectorRegistry:
-    return ConnectorRegistry(tuple(MockConnector(name) for name in ("github", "internal", "mock_bank", "telegram", "weather")))
+    return ConnectorRegistry(
+        tuple(
+            MockConnector(name)
+            for name in ("github", "internal", "mock_bank", "telegram", "weather")
+        )
+    )

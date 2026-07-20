@@ -19,6 +19,7 @@ class ActionRead(BaseModel):
     risk_level: RiskLevel
     requires_approval: bool
     policy_reason: str | None
+    execution_result: dict[str, Any] | None = None
     completed_at: datetime | None
     last_error: str | None = None
     depends_on: list[UUID] = []

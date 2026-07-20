@@ -1,6 +1,7 @@
 "use client";
 
 import { ApiAbortError, ApiError, ApiTimeoutError } from "@/lib/api/errors";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import type {
   Approval,
   ApiClient,
@@ -9,6 +10,9 @@ import type {
   Connection,
   CurrentUser,
   DashboardSummary,
+  EventAttachment,
+  EventAttachmentContent,
+  EventAttachmentUploadInput,
   EventDetail,
   EventListQuery,
   EventListResponse,
@@ -27,8 +31,6 @@ import type {
   StandingOrderUpdateInput,
   TelegramConnectionInput,
 } from "@/lib/api/types";
-import { getAccessToken as fetchAuth0AccessToken } from "@auth0/nextjs-auth0/client";
-
 interface ApiClientOptions {
   baseUrl?: string;
   defaultTimeoutMs?: number;
@@ -64,18 +66,18 @@ async function jsonBody(response: Response) {
 }
 
 async function browserAccessToken() {
-  try {
-    // Fetches (and silently refreshes) the Auth0 access token via /auth/access-token.
-    return (await fetchAuth0AccessToken()) ?? null;
-  } catch {
-    // No active session or a failed refresh — treat as unauthenticated.
-    return null;
-  }
+  const {
+    data: { session },
+  } = await createSupabaseClient().auth.getSession();
+  return session?.access_token ?? null;
 }
 
 async function browserUnauthorized() {
-  // A 401 means the session is gone or unusable; end it via the Auth0 logout route.
-  if (typeof window !== "undefined") window.location.assign("/auth/logout");
+  try {
+    await createSupabaseClient().auth.signOut();
+  } finally {
+    if (typeof window !== "undefined") window.location.assign("/login");
+  }
 }
 
 export function createApiClient(options: ApiClientOptions = {}): ApiClient {
@@ -160,9 +162,25 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
       request<EventListResponse>(withQuery("/api/v1/events", query), requestOptions),
     getEvent: (eventId, requestOptions) =>
       request<EventDetail>(`/api/v1/events/${eventId}`, requestOptions),
+    deleteEvent: async (eventId, requestOptions) => {
+      await request<void>(`/api/v1/events/${eventId}`, { ...requestOptions, method: "DELETE" });
+    },
     getEventTimeline: (eventId, query: TimelineQuery = {}, requestOptions) =>
       request<TimelineResponse>(
         withQuery(`/api/v1/events/${eventId}/timeline`, query),
+        requestOptions,
+      ),
+    listEventAttachments: (eventId, requestOptions) =>
+      request<EventAttachment[]>(`/api/v1/events/${eventId}/attachments`, requestOptions),
+    uploadEventAttachment: (eventId, input, requestOptions) =>
+      request<EventAttachment>(`/api/v1/events/${eventId}/attachments`, {
+        ...requestOptions,
+        body: input as EventAttachmentUploadInput,
+        method: "POST",
+      }),
+    getEventAttachmentContent: (eventId, attachmentId, requestOptions) =>
+      request<EventAttachmentContent>(
+        `/api/v1/events/${eventId}/attachments/${attachmentId}/content`,
         requestOptions,
       ),
     getPlan: (planId, requestOptions) => request<Plan>(`/api/v1/plans/${planId}`, requestOptions),
@@ -208,6 +226,11 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
         ...requestOptions,
         body: input as StandingOrderUpdateInput,
         method: "PATCH",
+      }),
+    compileStandingOrder: (orderId, requestOptions) =>
+      request<StandingOrder>(`/api/v1/standing-orders/${orderId}/compile`, {
+        ...requestOptions,
+        method: "POST",
       }),
     deleteStandingOrder: async (orderId, requestOptions) => {
       await request<void>(`/api/v1/standing-orders/${orderId}`, {

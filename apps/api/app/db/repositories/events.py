@@ -4,11 +4,15 @@ from datetime import datetime
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.action import Action
+from app.models.enums import ActionStatus, PlanStatus
 from app.models.event import LifeEvent, RawEvent
+from app.models.event_attachment import EventAttachment
+from app.models.plan import Plan
 
 Cursor = tuple[datetime, UUID]
 
@@ -47,6 +51,55 @@ class EventRepository:
         )
         return cast(LifeEvent | None, await self.session.scalar(statement))
 
+    async def lock_life_for_delete(self, user_id: UUID, event_id: UUID) -> LifeEvent | None:
+        statement = (
+            select(LifeEvent)
+            .where(LifeEvent.id == event_id, LifeEvent.user_id == user_id)
+            .with_for_update()
+        )
+        return cast(LifeEvent | None, await self.session.scalar(statement))
+
+    async def has_active_work(self, user_id: UUID, event_id: UUID) -> bool:
+        active_plans = (PlanStatus.RUNNING, PlanStatus.WAITING_APPROVAL)
+        active_actions = (
+            ActionStatus.WAITING_APPROVAL,
+            ActionStatus.APPROVED,
+            ActionStatus.QUEUED,
+            ActionStatus.RUNNING,
+        )
+        statement = (
+            select(Plan.id)
+            .outerjoin(Action, Action.plan_id == Plan.id)
+            .where(
+                Plan.user_id == user_id,
+                Plan.source_event_id == event_id,
+                or_(Plan.status.in_(active_plans), Action.status.in_(active_actions)),
+            )
+            .limit(1)
+        )
+        return await self.session.scalar(statement) is not None
+
+    async def delete_owned_aggregate(
+        self, user_id: UUID, event_id: UUID, raw_event_id: UUID
+    ) -> bool:
+        life_statement = (
+            delete(LifeEvent)
+            .where(
+                LifeEvent.id == event_id,
+                LifeEvent.user_id == user_id,
+                LifeEvent.raw_event_id == raw_event_id,
+            )
+            .returning(LifeEvent.id)
+        )
+        if await self.session.scalar(life_statement) is None:
+            return False
+        raw_statement = (
+            delete(RawEvent)
+            .where(RawEvent.id == raw_event_id, RawEvent.user_id == user_id)
+            .returning(RawEvent.id)
+        )
+        return await self.session.scalar(raw_statement) is not None
+
     async def list_life(
         self,
         user_id: UUID,
@@ -72,11 +125,13 @@ class EventRepository:
             created_at, event_id = cursor
             statement = statement.where(
                 or_(
-                    LifeEvent.created_at > created_at,
-                    (LifeEvent.created_at == created_at) & (LifeEvent.id > event_id),
+                    LifeEvent.created_at < created_at,
+                    (LifeEvent.created_at == created_at) & (LifeEvent.id < event_id),
                 )
             )
-        statement = statement.order_by(LifeEvent.created_at, LifeEvent.id).limit(limit)
+        statement = statement.order_by(LifeEvent.created_at.desc(), LifeEvent.id.desc()).limit(
+            limit
+        )
         return list(await self.session.scalars(statement))
 
     async def get_life_by_raw(self, user_id: UUID, raw_event_id: UUID) -> LifeEvent | None:
@@ -86,6 +141,44 @@ class EventRepository:
             .where(LifeEvent.user_id == user_id, LifeEvent.raw_event_id == raw_event_id)
         )
         return cast(LifeEvent | None, await self.session.scalar(statement))
+
+    async def list_attachments(self, user_id: UUID, event_id: UUID) -> list[EventAttachment]:
+        statement = (
+            select(EventAttachment)
+            .where(
+                EventAttachment.user_id == user_id,
+                EventAttachment.life_event_id == event_id,
+            )
+            .order_by(EventAttachment.created_at.asc(), EventAttachment.id.asc())
+        )
+        return list(await self.session.scalars(statement))
+
+    async def get_attachment(
+        self, user_id: UUID, event_id: UUID, attachment_id: UUID
+    ) -> EventAttachment | None:
+        statement = select(EventAttachment).where(
+            EventAttachment.id == attachment_id,
+            EventAttachment.user_id == user_id,
+            EventAttachment.life_event_id == event_id,
+        )
+        return cast(EventAttachment | None, await self.session.scalar(statement))
+
+    async def get_attachment_by_hash(
+        self, user_id: UUID, event_id: UUID, digest: str
+    ) -> EventAttachment | None:
+        statement = select(EventAttachment).where(
+            EventAttachment.user_id == user_id,
+            EventAttachment.life_event_id == event_id,
+            EventAttachment.sha256 == digest,
+        )
+        return cast(EventAttachment | None, await self.session.scalar(statement))
+
+    async def attachment_count(self, user_id: UUID, event_id: UUID) -> int:
+        statement = select(func.count(EventAttachment.id)).where(
+            EventAttachment.user_id == user_id,
+            EventAttachment.life_event_id == event_id,
+        )
+        return int(await self.session.scalar(statement) or 0)
 
     async def add_raw(self, event: RawEvent) -> RawEvent:
         self.session.add(event)

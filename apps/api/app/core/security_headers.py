@@ -28,11 +28,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, max_bytes: int) -> None:
+    def __init__(self, app: ASGIApp, max_bytes: int, attachment_max_bytes: int) -> None:
         super().__init__(app)
         self.max_bytes = max_bytes
+        self.attachment_max_bytes = attachment_max_bytes
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        is_attachment_upload = (
+            request.method == "POST"
+            and request.url.path.startswith("/api/v1/events/")
+            and request.url.path.endswith("/attachments")
+        )
+        max_bytes = self.attachment_max_bytes if is_attachment_upload else self.max_bytes
         content_length = request.headers.get("content-length")
         if content_length:
             try:
@@ -45,9 +52,9 @@ class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=400, content={"detail": {"code": "invalid_content_length"}}
                 )
-            if declared_size > self.max_bytes:
+            if declared_size > max_bytes:
                 return self._too_large()
-        if len(await request.body()) > self.max_bytes:
+        if len(await request.body()) > max_bytes:
             return self._too_large()
         return await call_next(request)
 

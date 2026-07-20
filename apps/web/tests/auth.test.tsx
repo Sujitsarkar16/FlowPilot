@@ -4,15 +4,11 @@ import { describe, expect, it } from "vitest";
 import LoginPage from "@/app/login/page";
 
 describe("login", () => {
-  it("links to Auth0 universal login for sign in and sign up", () => {
+  it("offers email/password and Google authentication", () => {
     render(<LoginPage />);
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
-      "href",
-      "/auth/login?returnTo=%2Fdashboard",
-    );
-    expect(screen.getByRole("link", { name: "Create an account" })).toHaveAttribute(
-      "href",
-      "/auth/login?screen_hint=signup&returnTo=%2Fdashboard",
-    );
+    expect(screen.getByRole("heading", { name: "Sign in to your workspace" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeInTheDocument();
   });
 });

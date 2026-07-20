@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
 
 from app.api.dependencies.auth import get_current_user
-from app.models.enums import AutonomyLevel
+from app.models.enums import AutonomyLevel, UserRole
 from app.models.user import User
 
 router = APIRouter(prefix="/api/v1", tags=["auth"])
@@ -20,6 +20,7 @@ class CurrentUserResponse(BaseModel):
     id: UUID
     email: str | None
     display_name: str | None
+    role: UserRole
     default_autonomy: AutonomyLevel
 
 

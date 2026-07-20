@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { Check, Cloud, Github, Send } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ErrorState } from "@/components/error-state";
@@ -17,18 +18,24 @@ const connectors = [
     name: "Google",
     description: "Bring Gmail, Calendar, and Drive context into your workspace.",
     permissions: ["Read Gmail messages", "Manage Calendar events", "Read Drive files"],
+    icon: Cloud,
+    iconClassName: "bg-sky-100 text-sky-700",
   },
   {
     provider: "github",
     name: "GitHub",
     description: "Connect repositories so relevant project activity can be understood.",
     permissions: ["Access public repositories"],
+    icon: Github,
+    iconClassName: "bg-slate-900 text-white",
   },
   {
     provider: "telegram",
     name: "Telegram",
     description: "Send notifications to a chat that you choose.",
     permissions: ["Send messages to the specified chat"],
+    icon: Send,
+    iconClassName: "bg-sky-100 text-sky-700",
   },
 ] as const;
 
@@ -100,7 +107,9 @@ export function ConnectionsManager() {
     try {
       await api.testConnection(connection.id);
       await loadConnections();
-      setFeedback(`${connection.provider === "github" ? "GitHub" : connection.provider === "google" ? "Google" : "Telegram"} connection test passed.`);
+      setFeedback(
+        `${connection.provider === "github" ? "GitHub" : connection.provider === "google" ? "Google" : "Telegram"} connection test passed.`,
+      );
     } catch (error) {
       setActionError(error);
     } finally {
@@ -157,15 +166,17 @@ export function ConnectionsManager() {
     <div className="mx-auto max-w-7xl p-4 pb-24 sm:p-6 md:pb-8">
       <div className="mb-6 max-w-3xl">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-          Connections
+          Connected apps
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Choose the services FlowPilot can use. Review the requested permissions before you connect.
-          Credentials stay encrypted and are never shown here.
+          Choose which apps FlowPilot can use and see exactly what each one can access. Your sign-in
+          details stay encrypted and are never shown here.
         </p>
       </div>
 
-      {actionError ? <ErrorState className="mb-4" error={actionError} title="Action failed" /> : null}
+      {actionError ? (
+        <ErrorState className="mb-4" error={actionError} title="Action failed" />
+      ) : null}
       {feedback ? (
         <p aria-live="polite" className="mb-4 text-sm font-medium text-emerald-800" role="status">
           {feedback}
@@ -182,34 +193,71 @@ export function ConnectionsManager() {
           </Button>
         </div>
       ) : (
-        <section aria-label="Available connections" className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section
+          aria-label="Available connections"
+          className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3"
+        >
           {connectors.map((connector) => {
             const connection = connectionFor(connections, connector.provider);
             const connected = connection?.status === "connected";
             const oauth = connector.provider !== "telegram";
             const providerName = connector.name;
+            const Icon = connector.icon;
             return (
-              <Card className="flex min-h-80 flex-col" key={connector.provider}>
-                <CardHeader className="gap-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <CardTitle>{connector.name}</CardTitle>
-                      <p className="mt-2 text-sm leading-5 text-slate-600">{connector.description}</p>
+              <Card
+                className="w-full overflow-hidden border-slate-200/90 shadow-sm transition-shadow hover:shadow-md"
+                key={connector.provider}
+              >
+                <CardHeader className="gap-4 p-5 pb-4">
+                  <div className="flex items-start gap-3">
+                    <div
+                      aria-hidden="true"
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${connector.iconClassName}`}
+                    >
+                      <Icon className="h-5 w-5" />
                     </div>
-                    <StatusBadge status={connection?.status ?? "not connected"} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <CardTitle className="text-lg">{connector.name}</CardTitle>
+                        <StatusBadge
+                          className="shrink-0 whitespace-nowrap"
+                          status={connection?.status ?? "Not connected"}
+                        />
+                      </div>
+                      <p className="mt-2 text-sm leading-5 text-slate-600">
+                        {connector.description}
+                      </p>
+                    </div>
                   </div>
                   {connection ? (
-                    <p className="text-xs text-slate-500">
-                      Connected account: {connection.provider_account_id}
+                    <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      Connected account: {" "}
+                      <span className="font-medium text-slate-800">
+                        {connection.provider_account_id}
+                      </span>
                     </p>
-                  ) : null}
+                  ) : (
+                    <p className="flex items-center gap-2 text-xs text-slate-500">
+                      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-slate-300" />
+                      No account connected yet
+                    </p>
+                  )}
                 </CardHeader>
-                <CardContent className="flex flex-1 flex-col">
-                  <section aria-label={`${connector.name} permission disclosure`}>
-                    <h3 className="text-sm font-medium text-slate-900">Requested permissions</h3>
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+                <CardContent className="p-5 pt-0">
+                  <section
+                    aria-label={`${connector.name} permission disclosure`}
+                    className="border-t border-slate-100 pt-4"
+                  >
+                    <h3 className="text-sm font-medium text-slate-900">FlowPilot can access</h3>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-600">
                       {connector.permissions.map((permission) => (
-                        <li key={permission}>{permission}</li>
+                        <li className="flex items-start gap-2" key={permission}>
+                          <Check
+                            aria-hidden="true"
+                            className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
+                          />
+                          {permission}
+                        </li>
                       ))}
                     </ul>
                   </section>
@@ -218,7 +266,7 @@ export function ConnectionsManager() {
                       Granted: {connection.scopes.join(", ")}
                     </p>
                   ) : null}
-                  <div className="mt-auto flex flex-wrap gap-2 pt-6">
+                  <div className="mt-6 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:flex-wrap">
                     {oauth ? (
                       <Button
                         disabled={busy !== null}
@@ -239,12 +287,12 @@ export function ConnectionsManager() {
                         type="button"
                         variant="outline"
                       >
-                        {busy === `test-${connection.id}` ? "Testing…" : "Test"}
+                        {busy === `test-${connection.id}` ? "Checking…" : "Check connection"}
                       </Button>
                     ) : null}
                     {connection ? (
                       <Button
-                        className="text-red-700 hover:bg-red-50 hover:text-red-800"
+                        className="text-red-700 hover:bg-red-50 hover:text-red-800 sm:ml-auto"
                         disabled={busy !== null}
                         onClick={() => {
                           setActionError(null);
@@ -326,8 +374,8 @@ function TelegramDialog({
         <CardHeader>
           <CardTitle id="telegram-setup-title">Connect Telegram</CardTitle>
           <p className="text-sm text-slate-600" id="telegram-setup-description">
-            Your bot token is sent only to set up this connection and is never displayed or stored in
-            the browser.
+            Your bot token is sent only to set up this connection and is never displayed or stored
+            in the browser.
           </p>
         </CardHeader>
         <CardContent>
@@ -363,7 +411,11 @@ function TelegramDialog({
                 value={chatId}
               />
             </div>
-            {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
+            {error ? (
+              <p className="text-sm text-red-700" role="alert">
+                {error}
+              </p>
+            ) : null}
             <div className="flex justify-end gap-3">
               <Button disabled={busy} onClick={onCancel} type="button" variant="outline">
                 Cancel

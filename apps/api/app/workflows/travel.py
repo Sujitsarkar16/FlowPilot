@@ -9,7 +9,7 @@ from app.workflows import _build_template_graph
 _TRAVEL_TYPES = {LifeEventType.TRAVEL_BOOKED, LifeEventType.TRAVEL_CHANGED}
 _NODES = (
     ("travel.create_folder", "travel.create_folder", ()),
-    ("travel.save_ticket", "travel.save_ticket", ("travel.create_folder",)),
+    ("travel.save_ticket", "travel.save_ticket", ()),
     ("travel.get_weather", "travel.get_weather", ()),
     (
         "travel.create_calendar_event",
@@ -47,12 +47,20 @@ def build_travel_workflow(event: LifeEvent, rule: CompiledRule) -> PlanGraph:
     """Build the ticket-aware travel DAG from structured booking entities."""
     if event.type not in _TRAVEL_TYPES:
         return PlanGraph.from_actions(())
-    nodes = tuple(node for node in _NODES if node[0] != "travel.save_ticket" or _has_ticket(event))
+    nodes = tuple(
+        node for node in _NODES if node[0] != "travel.save_ticket" or _has_ticket_evidence(event)
+    )
     return _build_template_graph(event, rule, nodes)
 
 
-def _has_ticket(event: LifeEvent) -> bool:
-    return any(entity.kind == "ticket" and not entity.is_sensitive for entity in event.entities)
+def _has_ticket_evidence(event: LifeEvent) -> bool:
+    return any(
+        entity.kind in {"pnr", "booking_reference", "confirmation", "flight", "flight_number"}
+        and any(
+            isinstance(value, str) and len(value.strip()) >= 3 for value in entity.value.values()
+        )
+        for entity in event.entities
+    )
 
 
 build = build_travel_workflow

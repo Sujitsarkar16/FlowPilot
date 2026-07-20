@@ -40,7 +40,7 @@ describe("shared status and feedback components", () => {
     );
     expect(
       screen.getAllByText(
-        /Draft|Policy checked|Running|Awaiting approval|Completed|Partially completed|Failed|Cancelled|Planned|Blocked|Approved|Queued|Rolled back|No approval required|Approval pending|Rejected|Verified/,
+        /Getting ready|Ready to start|In progress|Needs your approval|Finished|Partly finished|Needs attention|Cancelled|Ready|Can’t continue|Allowed|Starting soon|Undone|No review needed|Not allowed|Checked|Connected|Disconnected/,
       ),
     ).toHaveLength(statuses.length);
   });

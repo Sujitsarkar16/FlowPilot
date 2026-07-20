@@ -8,7 +8,9 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard" }));
 
 describe("activeNavigationHref", () => {
   it("selects only the most specific route for nested navigation", () => {
-    expect(activeNavigationHref("/dashboard/settings/autonomy")).toBe("/dashboard/settings/autonomy");
+    expect(activeNavigationHref("/dashboard/settings/autonomy")).toBe(
+      "/dashboard/settings/autonomy",
+    );
     expect(activeNavigationHref("/dashboard/settings")).toBe("/dashboard/settings");
     expect(activeNavigationHref("/dashboard/events/event-1")).toBe("/dashboard/events");
   });

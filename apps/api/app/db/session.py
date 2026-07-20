@@ -14,12 +14,12 @@ from app.core.config import Settings, get_settings
 
 
 def create_engine(settings: Settings) -> AsyncEngine:
-    """Build an async engine with bounded pooling for application traffic."""
-    options: dict[str, object] = {"pool_pre_ping": True}
-    if not settings.database_url.startswith("sqlite"):
-        options.update(
-            pool_size=settings.database_pool_size, max_overflow=settings.database_max_overflow
-        )
+    """Build an async engine for the configured Supabase Postgres database."""
+    options: dict[str, object] = {
+        "pool_pre_ping": True,
+        "pool_size": settings.database_pool_size,
+        "max_overflow": settings.database_max_overflow,
+    }
     return create_async_engine(settings.database_url, **options)
 
 

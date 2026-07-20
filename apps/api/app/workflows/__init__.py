@@ -73,6 +73,8 @@ def build_workflow(event: LifeEvent, rule: CompiledRule) -> PlanGraph:
         return build_client_launch_workflow(event, rule)
     if event.type is LifeEventType.SALARY_CREDITED:
         return build_salary_workflow(event, rule)
+    if event.type is LifeEventType.SUBSCRIPTION_RENEWAL:
+        return build_subscription_workflow(event, rule)
     return PlanGraph.from_actions(())
 
 
@@ -90,6 +92,15 @@ def build_client_launch_workflow(event: LifeEvent, rule: CompiledRule) -> PlanGr
     return build(event, rule)
 
 
+def build_subscription_workflow(event: LifeEvent, rule: CompiledRule) -> PlanGraph:
+    """Build the bounded, read-only subscription discovery template."""
+    return _build_template_graph(
+        event,
+        rule,
+        (("subscription.check_renewal", "subscription.check_renewal", ()),),
+    )
+
+
 def build_salary_workflow(event: LifeEvent, rule: CompiledRule) -> PlanGraph:
     """Build the deterministic salary template."""
     from app.workflows.salary import build_salary_workflow as build
@@ -101,6 +112,7 @@ __all__ = [
     "WorkflowError",
     "build_client_launch_workflow",
     "build_salary_workflow",
+    "build_subscription_workflow",
     "build_travel_workflow",
     "build_workflow",
 ]

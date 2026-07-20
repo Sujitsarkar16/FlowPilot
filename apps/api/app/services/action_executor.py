@@ -2,6 +2,8 @@
 
 import logging
 from datetime import UTC, datetime
+from hashlib import sha256
+from pathlib import PurePath
 from typing import Any, cast
 from uuid import UUID
 
@@ -10,14 +12,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.connectors.base import ConnectorExecutionError
+from app.core.config import get_settings
 from app.db.repositories.connections import ConnectionRepository
+from app.db.repositories.events import EventRepository
 from app.models.action import Action, ActionDependency
 from app.models.approval import Approval
 from app.models.enums import ActionStatus, ApprovalDecision, PlanStatus
+from app.models.event_attachment import EventAttachment
 from app.models.job import Job
 from app.models.plan import Plan
 from app.schemas.connector import ConnectorErrorCategory
 from app.schemas.policy import PolicyDecision
+from app.schemas.raw_sources import MAX_ATTACHMENTS
 from app.services.approvals import ApprovalService
 from app.services.audit import AuditService
 from app.services.audit_redaction import redact as _redact
@@ -51,6 +57,7 @@ class ActionExecutor:
         self._policy = policy or PolicyEngine()
         self._retries = retries or RetryPolicy()
         self._connections = ConnectionRepository(session)
+        self._events = EventRepository(session)
         self._audit_service = AuditService(session)
 
     async def execute(self, job: Job) -> None:
@@ -129,6 +136,7 @@ class ActionExecutor:
             _redact(result.rollback_payload) if result.rollback_payload else None
         )
         action.last_error = None
+        await self._save_generated_documents(action, result.output)
         self._audit(action, "action_completed", {"result": action.execution_result})
         await self._refresh_plan_status(action.plan)
         await self._session.flush()
@@ -142,6 +150,77 @@ class ActionExecutor:
                 "action_id": str(action.id),
             },
         )
+
+    async def _save_generated_documents(self, action: Action, output: dict[str, Any]) -> None:
+        if action.action_type not in {
+            "travel.generate_documents",
+            "client.generate_documents",
+        }:
+            return
+        documents = output.get("documents")
+        if not isinstance(documents, list):
+            return
+        count = await self._events.attachment_count(
+            action.plan.user_id, action.plan.source_event_id
+        )
+        for document in documents:
+            if count >= MAX_ATTACHMENTS:
+                logger.warning(
+                    "generated document not saved: event folder is full",
+                    extra={"event_id": str(action.plan.source_event_id)},
+                )
+                break
+            if not isinstance(document, dict):
+                continue
+            filename = document.get("filename")
+            content = document.get("content")
+            mime_type = document.get("content_type")
+            if (
+                not isinstance(filename, str)
+                or not filename
+                or len(filename) > 255
+                or PurePath(filename).name != filename
+                or "/" in filename
+                or "\\" in filename
+                or any(ord(char) < 32 for char in filename)
+                or mime_type != "text/markdown"
+                or not isinstance(content, str)
+                or not content
+            ):
+                logger.warning(
+                    "invalid generated document was not saved",
+                    extra={"action_id": str(action.id)},
+                )
+                continue
+            encoded = content.encode("utf-8")
+            if len(encoded) > get_settings().event_attachment_max_bytes:
+                logger.warning(
+                    "generated document not saved: file is too large",
+                    extra={"action_id": str(action.id), "filename": filename},
+                )
+                continue
+            digest = sha256(encoded).hexdigest()
+            if await self._events.get_attachment_by_hash(
+                action.plan.user_id, action.plan.source_event_id, digest
+            ):
+                continue
+            self._session.add(
+                EventAttachment(
+                    user_id=action.plan.user_id,
+                    life_event_id=action.plan.source_event_id,
+                    filename=filename,
+                    mime_type=mime_type,
+                    size_bytes=len(encoded),
+                    sha256=digest,
+                    content=encoded,
+                )
+            )
+            self._audit(
+                action,
+                "event_document_saved",
+                {"name": filename, "mime_type": mime_type, "size_bytes": len(encoded)},
+            )
+            count += 1
 
     async def _action(self, action_id: UUID | None) -> Action | None:
         if action_id is None:

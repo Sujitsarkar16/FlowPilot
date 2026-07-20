@@ -92,6 +92,12 @@ class AutonomyLevel(StrEnum):
     OBSERVE = "observe"
     SUGGEST = "suggest"
     SAFE_ACTIONS = "safe_actions"
+    TRUSTED_WORKFLOWS = "trusted_workflows"
+
+
+class UserRole(StrEnum):
+    MEMBER = "member"
+    ADMIN = "admin"
 
 
 class CompilationStatus(StrEnum):

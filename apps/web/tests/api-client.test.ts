@@ -18,16 +18,14 @@ const makeClient = (fetchFn: typeof fetch, extras = {}) =>
 
 describe("typed API client", () => {
   it("returns the typed current user and sends the session token", async () => {
-    const fetchFn = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        response({
-          id: "user-1",
-          email: "person@example.com",
-          display_name: "Person",
-          default_autonomy: "safe_actions",
-        }),
-      );
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(
+      response({
+        id: "user-1",
+        email: "person@example.com",
+        display_name: "Person",
+        default_autonomy: "safe_actions",
+      }),
+    );
     const user = await makeClient(fetchFn).getMe();
     expect(user).toMatchObject({ id: "user-1", default_autonomy: "safe_actions" });
     const [, init] = fetchFn.mock.calls[0];
@@ -97,7 +95,9 @@ describe("typed API client", () => {
     const fetchFn = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(response([]))
-      .mockResolvedValueOnce(response({ authorization_url: "https://accounts.example.test/authorize" }))
+      .mockResolvedValueOnce(
+        response({ authorization_url: "https://accounts.example.test/authorize" }),
+      )
       .mockResolvedValueOnce(
         response({
           id: "telegram-1",

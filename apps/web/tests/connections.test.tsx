@@ -41,7 +41,8 @@ describe("ConnectionsManager", () => {
     await screen.findByRole("heading", { name: "Google" });
 
     expect(screen.getByRole("region", { name: "Available connections" })).toBeVisible();
-    expect(screen.getAllByText("Requested permissions")).toHaveLength(3);
+    expect(screen.getAllByText("FlowPilot can access")).toHaveLength(3);
+    expect(screen.getAllByText("No account connected yet")).toHaveLength(3);
     expect(screen.getByText("Read Gmail messages")).toBeVisible();
     expect(screen.getByText("Access public repositories")).toBeVisible();
     expect(screen.getByText("Send messages to the specified chat")).toBeVisible();
@@ -74,7 +75,7 @@ describe("ConnectionsManager", () => {
     const user = userEvent.setup();
     mockedApi.listConnections.mockResolvedValueOnce([googleConnection]).mockResolvedValueOnce([]);
     render(<ConnectionsManager />);
-    await screen.findByText("Connected account: person@example.com");
+    await screen.findByText("person@example.com");
 
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     const confirmDialog = screen.getByRole("dialog", { name: "Disconnect this connection?" });

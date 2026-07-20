@@ -1,4 +1,7 @@
-import type { CompiledStandingOrderRule, StandingOrderActionTemplate } from "@/lib/standing-order-types";
+import type {
+  CompiledStandingOrderRule,
+  StandingOrderActionTemplate,
+} from "@/lib/standing-order-types";
 
 export type AutonomyLevel = "observe" | "suggest" | "safe_actions";
 export type ConnectionProvider = "google" | "github" | "telegram" | "mock_bank";
@@ -32,7 +35,17 @@ export interface ApprovalAction {
   action_type: string;
   connector: string;
   input: Record<string, unknown>;
-  status: "planned" | "blocked" | "waiting_approval" | "approved" | "queued" | "running" | "completed" | "failed" | "cancelled" | "rolled_back";
+  status:
+    | "planned"
+    | "blocked"
+    | "waiting_approval"
+    | "approved"
+    | "queued"
+    | "running"
+    | "completed"
+    | "failed"
+    | "cancelled"
+    | "rolled_back";
   risk_level: RiskLevel;
   requires_approval: boolean;
   policy_reason: string | null;
@@ -67,9 +80,34 @@ export type LifeEventType =
 
 export type RawEventStatus = "received" | "normalized" | "duplicate" | "failed";
 
+export interface EventAttachmentInputMeta {
+  name: string;
+  mime_type: string;
+  size_bytes: number;
+}
+
+export interface EventAttachment {
+  id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+export interface EventAttachmentContent extends EventAttachment {
+  content_base64: string;
+}
+
+export interface EventAttachmentUploadInput {
+  name: string;
+  mime_type: string;
+  content_base64: string;
+}
+
 export interface ManualEventInput {
   text: string;
   category_hint?: string | null;
+  attachments?: EventAttachmentInputMeta[];
 }
 
 export interface ManualEventResponse {
@@ -193,6 +231,7 @@ export interface PlanAction {
   risk_level: RiskLevel;
   requires_approval: boolean;
   policy_reason: string | null;
+  execution_result?: Record<string, unknown> | null;
   completed_at: string | null;
   last_error?: string | null;
   depends_on?: string[];
@@ -255,17 +294,35 @@ export interface ApiClient {
     options?: Omit<ApiRequestOptions, "method">,
   ): Promise<EventListResponse>;
   getEvent(eventId: string, options?: Omit<ApiRequestOptions, "method">): Promise<EventDetail>;
+  deleteEvent(eventId: string, options?: Omit<ApiRequestOptions, "method">): Promise<void>;
   getEventTimeline(
     eventId: string,
     query?: TimelineQuery,
     options?: Omit<ApiRequestOptions, "method">,
   ): Promise<TimelineResponse>;
+  listEventAttachments(
+    eventId: string,
+    options?: Omit<ApiRequestOptions, "method">,
+  ): Promise<EventAttachment[]>;
+  uploadEventAttachment(
+    eventId: string,
+    input: EventAttachmentUploadInput,
+    options?: Omit<ApiRequestOptions, "method" | "body">,
+  ): Promise<EventAttachment>;
+  getEventAttachmentContent(
+    eventId: string,
+    attachmentId: string,
+    options?: Omit<ApiRequestOptions, "method">,
+  ): Promise<EventAttachmentContent>;
   getPlan(planId: string, options?: Omit<ApiRequestOptions, "method">): Promise<Plan>;
   executePlan(planId: string, options?: Omit<ApiRequestOptions, "method">): Promise<Plan>;
   cancelPlan(planId: string, options?: Omit<ApiRequestOptions, "method">): Promise<Plan>;
   promotePlan(planId: string, options?: Omit<ApiRequestOptions, "method">): Promise<Plan>;
   retryAction(actionId: string, options?: Omit<ApiRequestOptions, "method">): Promise<PlanAction>;
-  rollbackAction(actionId: string, options?: Omit<ApiRequestOptions, "method">): Promise<PlanAction>;
+  rollbackAction(
+    actionId: string,
+    options?: Omit<ApiRequestOptions, "method">,
+  ): Promise<PlanAction>;
   getPreferences(options?: Omit<ApiRequestOptions, "method">): Promise<Preferences>;
   updatePreferences(
     input: PreferencesUpdateInput,
@@ -284,6 +341,10 @@ export interface ApiClient {
     orderId: string,
     input: StandingOrderUpdateInput,
     options?: Omit<ApiRequestOptions, "method" | "body">,
+  ): Promise<StandingOrder>;
+  compileStandingOrder(
+    orderId: string,
+    options?: Omit<ApiRequestOptions, "method">,
   ): Promise<StandingOrder>;
   deleteStandingOrder(orderId: string, options?: Omit<ApiRequestOptions, "method">): Promise<void>;
   simulateStandingOrder(
@@ -313,8 +374,5 @@ export interface ApiClient {
     connectionId: string,
     options?: Omit<ApiRequestOptions, "method">,
   ): Promise<Connection>;
-  disconnect(
-    connectionId: string,
-    options?: Omit<ApiRequestOptions, "method">,
-  ): Promise<void>;
+  disconnect(connectionId: string, options?: Omit<ApiRequestOptions, "method">): Promise<void>;
 }

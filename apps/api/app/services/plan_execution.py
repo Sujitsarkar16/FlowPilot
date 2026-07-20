@@ -128,10 +128,23 @@ class PlanExecutionService:
             raise PlanExecutionError("Plan not found")
         if any(action.status is ActionStatus.COMPLETED for action in plan.actions):
             raise PlanExecutionError("Plans with completed external actions cannot be cancelled")
-        cancellable = [action for action in plan.actions if action.status in (ActionStatus.PLANNED, ActionStatus.APPROVED, ActionStatus.QUEUED)]
+        if any(action.status is ActionStatus.RUNNING for action in plan.actions):
+            raise PlanExecutionError("Wait for running actions to finish before cancelling this plan")
+        cancellable = [
+            action
+            for action in plan.actions
+            if action.status
+            in (
+                ActionStatus.PLANNED,
+                ActionStatus.WAITING_APPROVAL,
+                ActionStatus.APPROVED,
+                ActionStatus.QUEUED,
+            )
+        ]
         for action in cancellable:
             action.status = ActionStatus.CANCELLED
         await self._jobs.cancel_for_actions([action.id for action in cancellable])
+        plan.execution_requested = False
         plan.status = PlanStatus.CANCELLED
         await self._session.commit()
         return plan

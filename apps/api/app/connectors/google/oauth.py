@@ -9,6 +9,8 @@ import httpx
 from app.core.config import Settings
 
 GOOGLE_SCOPES = (
+    "openid",
+    "email",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/drive.file",
@@ -103,3 +105,27 @@ class GoogleOAuthClient:
         if not response.is_success or not isinstance(account_id, str) or not account_id:
             raise OAuthProviderError("Google identity lookup failed")
         return OAuthIdentity(account_id=account_id, email=email if isinstance(email, str) else None)
+
+    async def refresh_access_token(self, refresh_token: str) -> str:
+        """Exchange a refresh token for a fresh access token."""
+        secret = self._settings.google_client_secret
+        if not secret:
+            raise OAuthProviderError("Google OAuth is not configured")
+        try:
+            async with httpx.AsyncClient(timeout=10.0, transport=self._transport) as client:
+                response = await client.post(
+                    self.token_endpoint,
+                    data={
+                        "client_id": self._settings.google_client_id,
+                        "client_secret": secret.get_secret_value(),
+                        "refresh_token": refresh_token,
+                        "grant_type": "refresh_token",
+                    },
+                )
+                payload = response.json()
+        except (httpx.HTTPError, ValueError):
+            raise OAuthProviderError("Google token refresh failed") from None
+        access_token = payload.get("access_token") if isinstance(payload, dict) else None
+        if not response.is_success or not isinstance(access_token, str) or not access_token:
+            raise OAuthProviderError("Google token refresh failed")
+        return access_token

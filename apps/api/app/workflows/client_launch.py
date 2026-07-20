@@ -9,6 +9,7 @@ from app.workflows import _build_template_graph
 _CLIENT_TYPES = {LifeEventType.CLIENT_OPPORTUNITY, LifeEventType.CLIENT_CONFIRMED}
 _NODES = (
     ("client.generate_documents", "client.generate_documents", ()),
+    ("client.create_folder", "client.create_folder", ()),
     (
         "client.create_repository",
         "client.create_repository",
@@ -22,7 +23,7 @@ _NODES = (
     (
         "client.notify_client",
         "client.notify_client",
-        ("client.create_repository", "client.create_calendar_event"),
+        ("client.create_folder", "client.create_repository", "client.create_calendar_event"),
     ),
 )
 

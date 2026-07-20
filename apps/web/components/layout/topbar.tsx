@@ -10,9 +10,16 @@ export function Topbar() {
         Workspace protected
       </p>
       <div className="flex items-center gap-2">
-        <button aria-label="View notifications" className="relative rounded-lg p-2 text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" type="button">
+        <button
+          aria-label="View notifications"
+          className="relative rounded-lg p-2 text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          type="button"
+        >
           <Bell aria-hidden="true" size={20} />
-          <span aria-hidden="true" className="absolute right-1 top-1 h-2 w-2 rounded-full bg-indigo-600" />
+          <span
+            aria-hidden="true"
+            className="absolute right-1 top-1 h-2 w-2 rounded-full bg-indigo-600"
+          />
         </button>
         <UserMenu />
       </div>

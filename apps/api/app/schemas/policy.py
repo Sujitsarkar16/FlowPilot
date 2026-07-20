@@ -16,8 +16,10 @@ class PolicyReason(StrEnum):
     RED_REQUIRES_APPROVAL = "red_requires_approval"
     ACTION_REQUIRES_APPROVAL = "action_requires_approval"
     SAFE_AUTOMATIC = "safe_automatic"
+    TRUSTED_AUTOMATIC = "trusted_automatic"
     SUGGEST_MANUAL = "suggest_manual"
     OBSERVE_MANUAL = "observe_manual"
+
 
 
 class PolicyDecision(BaseModel):

@@ -122,3 +122,56 @@ async def test_list_includes_the_latest_plan_summary(session: object) -> None:
         assert latest_plan["objective"] == "Prepare the trip"
         assert latest_plan["status"] == "draft"
         assert latest_plan["action_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_delete_event_removes_owned_event_and_blocks_active_work(session: object) -> None:
+    user = User(auth_subject="delete-owner")
+    session.add(user)  # type: ignore[attr-defined]
+    await session.commit()  # type: ignore[attr-defined]
+    removable = await _seed_event(session, user, "Remove me")
+
+    async with _client(session, user) as client:
+        assert (await client.delete(f"/api/v1/events/{removable.id}")).status_code == 204
+        assert (await client.get(f"/api/v1/events/{removable.id}")).status_code == 404
+        assert (await client.delete(f"/api/v1/events/{removable.id}")).status_code == 404
+
+        active = await _seed_event(session, user, "Still working")
+        session.add(  # type: ignore[attr-defined]
+            Plan(
+                user_id=user.id,
+                source_event_id=active.id,
+                objective="Finish active work",
+                summary=None,
+                planner_rationale=None,
+                status=PlanStatus.RUNNING,
+            )
+        )
+        await session.commit()  # type: ignore[attr-defined]
+
+        response = await client.delete(f"/api/v1/events/{active.id}")
+        assert response.status_code == 409
+        assert response.json()["detail"] == "Cancel the active plan before deleting this event"
+        assert (await client.get(f"/api/v1/events/{active.id}")).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_list_is_newest_first_and_cursor_continues_backwards(session: object) -> None:
+    user = User(auth_subject="query-newest-first")
+    session.add(user)  # type: ignore[attr-defined]
+    await session.commit()  # type: ignore[attr-defined]
+    older = await _seed_event(session, user, "Older event")
+    newer = await _seed_event(session, user, "Newer event")
+    older.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+    newer.created_at = datetime(2026, 1, 2, tzinfo=UTC)
+    await session.commit()  # type: ignore[attr-defined]
+
+    async with _client(session, user) as client:
+        first_page = await client.get("/api/v1/events", params={"limit": 1})
+        second_page = await client.get(
+            "/api/v1/events",
+            params={"limit": 1, "cursor": first_page.json()["next_cursor"]},
+        )
+
+    assert first_page.json()["items"][0]["id"] == str(newer.id)
+    assert second_page.json()["items"][0]["id"] == str(older.id)

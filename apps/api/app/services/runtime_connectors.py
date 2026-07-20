@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from datetime import UTC, date, datetime, time, timedelta
+from email.utils import parseaddr
 from typing import Any
 from uuid import UUID
 
@@ -13,6 +14,8 @@ from app.connectors.base import Connector, ConnectorExecutionError, MockConnecto
 from app.connectors.github.repositories import GitHubRepositoryConnector
 from app.connectors.google.calendar import GoogleCalendarConnector
 from app.connectors.google.drive import GoogleDriveConnector
+from app.connectors.google.gmail import GmailAuthenticationError, GmailClient, GmailError
+from app.connectors.google.oauth import GoogleOAuthClient, OAuthProviderError
 from app.connectors.internal.documents import InternalDocumentConnector
 from app.connectors.telegram.actions import TelegramActionConnector
 from app.connectors.weather.open_meteo import OpenMeteoConnector
@@ -22,6 +25,7 @@ from app.models.action import Action, ActionDependency
 from app.models.connection import Connection
 from app.models.enums import ConnectionProvider, ConnectionStatus
 from app.models.event import LifeEvent
+from app.models.event_attachment import EventAttachment
 from app.models.plan import Plan
 from app.schemas.connector import (
     ConnectorErrorCategory,
@@ -30,6 +34,16 @@ from app.schemas.connector import (
 )
 from app.services.connection_secrets import ConnectionSecrets
 from app.services.connector_registry import ConnectorRegistry
+from app.services.travel_ticket import TravelTicketService
+
+_GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+_SUBSCRIPTION_QUERY = (
+    "newer_than:1y {subject:subscription subject:renewal subject:membership "
+    'subject:"auto-renew" subject:recurring}'
+)
+_MAX_SUBSCRIPTION_CANDIDATES = 50
+_MAX_SUBSCRIPTION_RESULTS = 20
+_INACTIVE_SUBJECT_TERMS = ("cancelled", "canceled", "expired", "terminated")
 
 
 class RuntimeConnector(Connector):
@@ -60,6 +74,32 @@ class RuntimeConnector(Connector):
         self, *, action_id: UUID, idempotency_key: str, result: ConnectorExecutionResult
     ) -> bool:
         action, event = await self._action_context(action_id)
+        if action.action_type == "subscription.check_renewal":
+            subscriptions = result.output.get("subscriptions")
+            return (
+                isinstance(subscriptions, list)
+                and isinstance(result.output.get("count"), int)
+                and result.output["count"] == len(subscriptions)
+            )
+        if action.action_type == "travel.save_ticket":
+            if result.output.get("found") is False:
+                return True
+            attachment_id = result.output.get("attachment_id")
+            if not isinstance(attachment_id, str):
+                return False
+            try:
+                parsed_attachment_id = UUID(attachment_id)
+            except ValueError:
+                return False
+            return (
+                await self._session.scalar(
+                    select(EventAttachment.id).where(
+                        EventAttachment.id == parsed_attachment_id,
+                        EventAttachment.user_id == action.plan.user_id,
+                        EventAttachment.life_event_id == event.id,
+                    )
+                )
+            ) is not None
         if self.name == "internal":
             if action.action_type == "salary.update_budget":
                 return isinstance(result.output.get("content"), str) and bool(
@@ -84,7 +124,10 @@ class RuntimeConnector(Connector):
         self, *, action_id: UUID, rollback_payload: Mapping[str, Any] | None
     ) -> ConnectorRollbackResult:
         action, event = await self._action_context(action_id)
-        if self.name in {"internal", "weather"}:
+        if self.name in {"internal", "weather"} or action.action_type in {
+            "travel.save_ticket",
+            "subscription.check_renewal",
+        }:
             return ConnectorRollbackResult(output={"rolled_back": False, "reason": "non_external"})
         connector = await self._provider(action, event)
         return await connector.rollback(action_id=action_id, rollback_payload=rollback_payload)
@@ -96,13 +139,16 @@ class RuntimeConnector(Connector):
         key: str,
         input: Mapping[str, Any],
     ) -> ConnectorExecutionResult:
+        if action.action_type == "travel.save_ticket":
+            return await TravelTicketService(self._session, self._settings).fetch(action, event)
+        if action.action_type == "subscription.check_renewal":
+            return await self._subscription_renewals(action)
         connector = await self._provider(action, event)
         if action.action_type.endswith("create_folder"):
             payload = {
                 "folder_name": self._text(input, "folder_name") or f"FlowPilot - {event.summary}",
             }
         elif action.action_type in {
-            "travel.save_ticket",
             "travel.upload_itinerary",
             "travel.upload_packing_checklist",
         }:
@@ -124,6 +170,94 @@ class RuntimeConnector(Connector):
                 ),
             }
         return await connector.execute(action_id=action.id, idempotency_key=key, input=payload)
+
+    async def _subscription_renewals(self, action: Action) -> ConnectorExecutionResult:
+        connections = list(
+            await self._session.scalars(
+                select(Connection)
+                .where(
+                    Connection.user_id == action.plan.user_id,
+                    Connection.provider == ConnectionProvider.GOOGLE,
+                    Connection.status == ConnectionStatus.CONNECTED,
+                )
+                .order_by(Connection.created_at.asc(), Connection.id.asc())
+            )
+        )
+        connection = next((item for item in connections if _GMAIL_SCOPE in item.scopes), None)
+        if connection is None:
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.AUTHORIZATION,
+                "Connect Google with Gmail read access to check subscriptions",
+            )
+        gmail = GmailClient(self._settings)
+        token = await self._get_google_token(connection)
+        try:
+            return await self._search_subscription_messages(gmail, token)
+        except GmailAuthenticationError:
+            token = await self._get_google_token(connection, force_refresh=True)
+            try:
+                return await self._search_subscription_messages(gmail, token)
+            except GmailAuthenticationError as error:
+                raise ConnectorExecutionError(
+                    ConnectorErrorCategory.AUTHORIZATION,
+                    "Google connection requires reauthentication",
+                ) from error
+            except GmailError as error:
+                raise ConnectorExecutionError(
+                    ConnectorErrorCategory.RETRYABLE, "Gmail subscription search failed"
+                ) from error
+        except GmailError as error:
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.RETRYABLE, "Gmail subscription search failed"
+            ) from error
+
+    @staticmethod
+    async def _search_subscription_messages(
+        gmail: GmailClient, access_token: str
+    ) -> ConnectorExecutionResult:
+        page = await gmail.list_messages(
+            access_token,
+            query=_SUBSCRIPTION_QUERY,
+            max_results=_MAX_SUBSCRIPTION_CANDIDATES,
+        )
+        subscriptions: list[dict[str, str]] = []
+        seen_services: set[str] = set()
+        for message_id in page.message_ids:
+            message = await gmail.get_message(access_token, message_id)
+            subject = message.subject.strip()
+            if any(term in subject.casefold() for term in _INACTIVE_SUBJECT_TERMS):
+                continue
+            sender_name, sender_address = parseaddr(message.sender)
+            sender_domain = sender_address.rpartition("@")[2]
+            service = (sender_name.strip() or sender_domain or "Unknown service")[:120]
+            service_key = service.casefold()
+            if service_key in seen_services:
+                continue
+            seen_services.add(service_key)
+            subscriptions.append(
+                {
+                    "service": service,
+                    "subject": subject[:200],
+                    "received_at": message.received_at.isoformat(),
+                }
+            )
+            if len(subscriptions) == _MAX_SUBSCRIPTION_RESULTS:
+                break
+        count = len(subscriptions)
+        return ConnectorExecutionResult(
+            output={
+                "found": count > 0,
+                "count": count,
+                "summary": (
+                    f"Found {count} recent email{'s' if count != 1 else ''} that may indicate "
+                    f"active subscription{'s' if count != 1 else ''}."
+                    if count
+                    else "No recent subscription or renewal emails were found."
+                ),
+                "subscriptions": subscriptions,
+                "search_window": "1 year",
+            }
+        )
 
     async def _github(
         self,
@@ -236,9 +370,6 @@ class RuntimeConnector(Connector):
         return folder_id if isinstance(folder_id, str) and folder_id else None
 
     async def _travel_file(self, action: Action, event: LifeEvent) -> tuple[str, str]:
-        if action.action_type == "travel.save_ticket":
-            ticket = self._entity_text(event, "ticket") or "Ticket reference"
-            return self._text(action.input, "ticket_name") or "ticket.txt", ticket
         document_type = (
             "itinerary" if action.action_type == "travel.upload_itinerary" else "packing_checklist"
         )
@@ -294,7 +425,7 @@ class RuntimeConnector(Connector):
             raise ConnectorExecutionError(
                 ConnectorErrorCategory.VALIDATION, "Salary allocations are invalid"
             )
-        content = "category,amount,currency\\n" + "\\n".join(
+        content = "category,amount,currency\n" + "\n".join(
             f"{category},{float(salary[category]):.2f},{currency}" for category in categories
         )
         warning = salary.get("overspending_warning")
@@ -332,11 +463,18 @@ class RuntimeConnector(Connector):
         if provider is None:
             raise ConnectorExecutionError(ConnectorErrorCategory.PERMANENT, "Unsupported connector")
         connection = connection or await self._connection(action.plan.user_id, provider)
-        token = self._token(connection)
         if self.name == "google":
-            if action.action_type.endswith("create_folder"):
+            token = await self._get_google_token(connection)
+            _drive_actions = {
+                "travel.create_folder",
+                "client.create_folder",
+                "travel.upload_itinerary",
+                "travel.upload_packing_checklist",
+            }
+            if action.action_type.endswith("create_folder") or action.action_type in _drive_actions:
                 return GoogleDriveConnector(access_token_resolver=lambda: token)
             return GoogleCalendarConnector(access_token_resolver=lambda: token)
+        token = self._sync_token(connection)
         if self.name == "github":
             return GitHubRepositoryConnector(access_token=token)
         return TelegramActionConnector(
@@ -372,7 +510,43 @@ class RuntimeConnector(Connector):
             )
         return connection
 
-    def _token(self, connection: Connection) -> str:
+    async def _get_google_token(
+        self, connection: Connection, *, force_refresh: bool = False
+    ) -> str:
+        """Return a Google access token, refreshing when missing or rejected."""
+        key = self._settings.encryption_key
+        if key is None:
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.AUTHORIZATION, "Connection encryption is unavailable"
+            )
+        cipher = SecretCipher(
+            key.get_secret_value(),
+            [old.get_secret_value() for old in self._settings.encryption_previous_keys],
+        )
+        secrets_service = ConnectionSecrets(cipher)
+        tokens = secrets_service.load(connection)
+        if tokens.access_token and not force_refresh:
+            return tokens.access_token
+        # Access token missing, cleared, or rejected — attempt refresh
+        if not tokens.refresh_token:
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.AUTHORIZATION,
+                "Google token is unavailable and no refresh token is stored",
+            )
+        try:
+            new_access_token = await GoogleOAuthClient(self._settings).refresh_access_token(
+                tokens.refresh_token
+            )
+        except OAuthProviderError as exc:
+            raise ConnectorExecutionError(
+                ConnectorErrorCategory.AUTHORIZATION, f"Google token refresh failed: {exc}"
+            ) from exc
+        secrets_service.save(connection, access_token=new_access_token)
+        await self._session.commit()
+        return new_access_token
+
+    def _sync_token(self, connection: Connection) -> str:
+        """Return the stored access token for non-Google providers (no refresh needed)."""
         key = self._settings.encryption_key
         if key is None:
             raise ConnectorExecutionError(

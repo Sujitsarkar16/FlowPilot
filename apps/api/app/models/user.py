@@ -6,7 +6,7 @@ from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, jsonb
-from app.models.enums import AutonomyLevel, db_enum
+from app.models.enums import AutonomyLevel, UserRole, db_enum
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
@@ -23,6 +23,9 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     auth_subject: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(320), unique=True)
     display_name: Mapped[str | None] = mapped_column(String(120))
+    role: Mapped[UserRole] = mapped_column(
+        db_enum(UserRole), default=UserRole.MEMBER, nullable=False
+    )
     default_autonomy: Mapped[AutonomyLevel] = mapped_column(
         db_enum(AutonomyLevel), default=AutonomyLevel.SUGGEST, nullable=False
     )

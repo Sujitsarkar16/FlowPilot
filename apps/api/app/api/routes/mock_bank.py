@@ -14,8 +14,10 @@ from app.db.session import get_session
 from app.models.enums import Importance, LifeEventType, RawEventStatus
 from app.models.event import EventEntity, LifeEvent
 from app.schemas.raw_sources import MockBankSource
+from app.services.ai import AINotConfiguredError, build_ai_provider
 from app.services.event_ingestion import EventIngestionService
 from app.services.event_normalizer import normalize
+from app.services.plan_customizer import PlanCustomizer
 from app.services.planning import NoMatchingStandingOrderError, PlanningService
 
 router = APIRouter(prefix="/api/v1/mock-bank", tags=["mock-bank"])
@@ -123,9 +125,7 @@ async def receive_salary_credit(
         user.id, normalize(source), idempotency_key=payload.transaction_id
     )
     if ingestion.is_duplicate:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Webhook replay rejected"
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Webhook replay rejected")
 
     allocations, warning = calculate_allocations(payload)
     event = LifeEvent(
@@ -153,7 +153,11 @@ async def receive_salary_credit(
     await session.commit()
 
     try:
-        plan = await PlanningService(session).create(user, event.id)
+        customizer = PlanCustomizer(build_ai_provider(settings))
+    except AINotConfiguredError:
+        customizer = PlanCustomizer()
+    try:
+        plan = await PlanningService(session, customizer).create(user, event.id)
     except NoMatchingStandingOrderError:
         plan = None
     return SalaryCreditResponse(

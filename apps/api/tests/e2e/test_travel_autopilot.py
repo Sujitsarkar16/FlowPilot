@@ -47,6 +47,7 @@ def test_booking_fixture_builds_an_idempotent_ticket_aware_dag() -> None:
         summary="Booking email: Lisbon",
         entities=[
             EventEntity(kind="destination", value={"name": "Lisbon"}, is_sensitive=False),
+            EventEntity(kind="pnr", value={"code": "ABC123"}, is_sensitive=True),
             EventEntity(kind="ticket", value={"name": "booking.pdf"}, is_sensitive=False),
         ],
     )

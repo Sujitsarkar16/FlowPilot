@@ -5,6 +5,7 @@ from app.models.approval import Approval
 from app.models.audit import AuditEntry
 from app.models.connection import Connection
 from app.models.event import EventEntity, LifeEvent, RawEvent
+from app.models.event_attachment import EventAttachment
 from app.models.job import Job
 from app.models.oauth_state import OAuthState
 from app.models.personal_context import PersonalContext
@@ -18,6 +19,7 @@ __all__ = [
     "Approval",
     "AuditEntry",
     "Connection",
+    "EventAttachment",
     "EventEntity",
     "Job",
     "LifeEvent",

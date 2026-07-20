@@ -15,7 +15,15 @@ describe("SimulationDialog", () => {
         result={{
           event_type: "travel_booked",
           matched: true,
-          proposed_actions: [{ action_type: "travel.notify_family", connector: "telegram", input: {}, risk_level: "yellow", approval_mode: "approval_required" }],
+          proposed_actions: [
+            {
+              action_type: "travel.notify_family",
+              connector: "telegram",
+              input: {},
+              risk_level: "yellow",
+              approval_mode: "approval_required",
+            },
+          ],
           warnings: ["The message will require approval."],
         }}
       />,

@@ -73,15 +73,15 @@ docs/           Product, architecture, safety and local-development documentatio
 
 - Python 3.11+
 - Node.js 20+
-- Docker Desktop with Docker Compose
 
 > Environment files are intentionally not committed. Create local `apps/api/.env` and `apps/web/.env.local` files as needed; never add credentials, tokens, or Supabase keys to Git.
 
-1. Start PostgreSQL:
+1. Configure Supabase Postgres:
 
 ```powershell
-docker compose up -d postgres
-docker compose exec postgres pg_isready -U flowpilot -d flowpilot
+Copy-Item apps\api\.env.example apps\api\.env
+# Set DATABASE_URL to the Supabase Session Pooler URL and MIGRATIONS_DATABASE_URL
+# to the direct Supabase database URL. Do not commit either value.
 ```
 
 2. Start the API in one terminal:
@@ -91,6 +91,7 @@ Set-Location apps\api
 py -3.11 -m venv .venv
 .venv\Scripts\python -m pip install --upgrade pip
 .venv\Scripts\python -m pip install -e ".[dev]"
+.venv\Scripts\alembic upgrade head
 .venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
 ```
 
@@ -128,6 +129,7 @@ npm run build
 - [System architecture](docs/02-system-architecture.md)
 - [Safety and policy model](docs/05-safety-and-policy.md)
 - [API and realtime design](docs/06-api-and-realtime.md)
+- [FlowPilot use-case playbook](docs/14-flowpilot-use-case-playbook.md)
 - [Local development guide](docs/LOCAL_DEVELOPMENT.md)
 
 ## Current boundaries

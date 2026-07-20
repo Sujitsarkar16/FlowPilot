@@ -4,7 +4,12 @@ from app.models.enums import Importance, LifeEventType
 from app.models.event import EventEntity, LifeEvent
 from app.schemas.compiled_rule import CompiledRule
 from app.services.action_registry import ACTION_REGISTRY
-from app.workflows import build_client_launch_workflow, build_salary_workflow, build_travel_workflow
+from app.workflows import (
+    build_client_launch_workflow,
+    build_salary_workflow,
+    build_subscription_workflow,
+    build_travel_workflow,
+)
 
 
 def rule(event_type: LifeEventType, action_types: list[str]) -> CompiledRule:
@@ -58,6 +63,10 @@ def test_templates_only_emit_matching_actions_with_explicit_dependencies() -> No
         event(LifeEventType.SALARY_CREDITED),
         rule(LifeEventType.SALARY_CREDITED, ["salary.update_budget", "salary.propose_transfer"]),
     )
+    subscription = build_subscription_workflow(
+        event(LifeEventType.SUBSCRIPTION_RENEWAL),
+        rule(LifeEventType.SUBSCRIPTION_RENEWAL, ["subscription.check_renewal"]),
+    )
 
     assert [action.action_type for action in travel.ordered_actions] == [
         "travel.create_folder",
@@ -66,3 +75,6 @@ def test_templates_only_emit_matching_actions_with_explicit_dependencies() -> No
     ]
     assert client.action_by_key["client.notify_client"].depends_on == ("client.create_repository",)
     assert salary.action_by_key["salary.propose_transfer"].depends_on == ("salary.update_budget",)
+    assert [action.action_type for action in subscription.ordered_actions] == [
+        "subscription.check_renewal"
+    ]

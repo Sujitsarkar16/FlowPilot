@@ -27,6 +27,16 @@ def build_ai_provider(settings: Settings) -> AIProvider:
     )
 
 
+def build_ai_provider_optional(settings: Settings) -> AIProvider:
+    """Return a real provider when configured; otherwise a no-op that yields safe fallbacks."""
+    try:
+        return build_ai_provider(settings)
+    except AINotConfiguredError:
+        from app.services.ai.unavailable import UnavailableAIProvider
+
+        return UnavailableAIProvider()
+
+
 __all__ = [
     "AIProvider",
     "AIError",
@@ -37,4 +47,5 @@ __all__ = [
     "TokenUsage",
     "OpenRouterProvider",
     "build_ai_provider",
+    "build_ai_provider_optional",
 ]

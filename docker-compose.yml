@@ -1,20 +1,95 @@
 services:
-  postgres:
-    image: postgres:16.6-alpine
+  api:
+    image: flowpilot-api:local
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+    env_file:
+      - apps/api/.env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-flowpilot}
-      POSTGRES_USER: ${POSTGRES_USER:-flowpilot}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowpilot}
+      WATCHFILES_FORCE_POLLING: "true"
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - "8000:8000"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 5s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api/app
+          target: /app/app
+        - action: sync
+          path: ./apps/api/alembic
+          target: /app/alembic
+        - action: rebuild
+          path: ./apps/api/pyproject.toml
+        - action: rebuild
+          path: ./apps/api/Dockerfile
+
+  worker:
+    image: flowpilot-api:local
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+    env_file:
+      - apps/api/.env
+    environment:
+      WATCHFILES_FORCE_POLLING: "true"
+    # Drains the durable job queue and executes plan actions. Without this, executed
+    # plans stay RUNNING forever because nothing processes their queued jobs.
+    command: ["python", "-m", "app.workers.main"]
+    depends_on:
+      api:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api/app
+          target: /app/app
+        - action: rebuild
+          path: ./apps/api/pyproject.toml
+        - action: rebuild
+          path: ./apps/api/Dockerfile
+
+  web:
+    image: flowpilot-web:local
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: development
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    env_file:
+      - apps/web/.env.local
+    environment:
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/web
+          target: /app
+          ignore:
+            - node_modules/
+            - .next/
+            - .env.local
+            - package.json
+            - package-lock.json
+        - action: rebuild
+          path: ./apps/web/package.json
+        - action: rebuild
+          path: ./apps/web/package-lock.json
+        - action: rebuild
+          path: ./apps/web/Dockerfile
 
   mailpit:
     image: axllent/mailpit:v1.22.4
@@ -22,6 +97,3 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025"
-
-volumes:
-  postgres_data:

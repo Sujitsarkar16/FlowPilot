@@ -74,15 +74,22 @@ def create_app() -> FastAPI:
     api.state.rate_limiter = rate_limiter_from_settings(settings)
     api.add_middleware(RequestContextMiddleware)
     api.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_bytes=settings.request_body_limit_bytes,
+        attachment_max_bytes=max(
+            settings.request_body_limit_bytes,
+            settings.event_attachment_max_bytes * 4 // 3 + 65_536,
+        ),
+    )
+    api.add_middleware(RateLimitMiddleware)
+    api.add_middleware(SecurityHeadersMiddleware, production=settings.environment == "production")
+    api.add_middleware(
         CORSMiddleware,
         allow_origins=[str(origin).rstrip("/") for origin in settings.cors_origins],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
     )
-    api.add_middleware(RequestBodyLimitMiddleware, max_bytes=settings.request_body_limit_bytes)
-    api.add_middleware(RateLimitMiddleware)
-    api.add_middleware(SecurityHeadersMiddleware, production=settings.environment == "production")
     api.include_router(me_router)
     api.include_router(events_router)
     api.include_router(mock_bank_router)

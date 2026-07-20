@@ -8,7 +8,7 @@ from app.services.action_registry import ACTION_REGISTRY, ActionRegistry, Action
 def test_catalog_contains_all_supported_actions_and_safe_metadata() -> None:
     metadata = ACTION_REGISTRY.frontend_metadata()
 
-    assert len(metadata) == 14
+    assert len(metadata) == 16
     assert [item["action_type"] for item in metadata] == sorted(
         item["action_type"] for item in metadata
     )

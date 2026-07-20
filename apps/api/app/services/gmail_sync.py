@@ -1,9 +1,12 @@
 """Polling ingestion for relevant Gmail messages."""
 
+import asyncio
+import logging
 from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.connectors.google.gmail import (
     GmailAuthenticationError,
@@ -13,10 +16,15 @@ from app.connectors.google.gmail import (
 )
 from app.models.connection import Connection
 from app.models.enums import ConnectionProvider, ConnectionStatus
+from app.models.event import RawEvent
 from app.schemas.gmail import GmailCursor, GmailRelevanceFilter
+from app.services.ai.base import AIProvider
 from app.services.connection_secrets import ConnectionSecrets
 from app.services.event_ingestion import EventIngestionService
 from app.services.event_normalizer import normalize
+from app.services.event_pipeline import EventPipelineService
+
+logger = logging.getLogger(__name__)
 
 
 class GmailSyncError(Exception):
@@ -30,27 +38,47 @@ class GmailSyncResult:
     ingested: int
     duplicates: int
     skipped: int
+    interpreted: int = 0
+    planned: int = 0
 
 
 class GmailSyncService:
     def __init__(
-        self, session: AsyncSession, gmail: GmailClient, secrets: ConnectionSecrets
+        self,
+        session: AsyncSession,
+        gmail: GmailClient,
+        secrets: ConnectionSecrets,
+        *,
+        ai_provider: AIProvider | None = None,
+        pipeline: EventPipelineService | None = None,
     ) -> None:
         self._session = session
         self._gmail = gmail
         self._secrets = secrets
         self._ingestion = EventIngestionService(session)
+        self._pipeline: EventPipelineService | None
+        if pipeline is not None:
+            self._pipeline = pipeline
+        elif ai_provider is not None:
+            self._pipeline = EventPipelineService(session, ai_provider)
+        else:
+            self._pipeline = None
 
     async def sync_all(self) -> list[GmailSyncResult]:
         connections = list(
             await self._session.scalars(
-                select(Connection).where(
+                select(Connection)
+                .options(selectinload(Connection.user))
+                .where(
                     Connection.provider == ConnectionProvider.GOOGLE,
                     Connection.status == ConnectionStatus.CONNECTED,
                 )
             )
         )
-        return [await self.sync_connection(connection) for connection in connections]
+        return list(
+            await asyncio.gather(*[self.sync_connection(conn) for conn in connections],
+                                  return_exceptions=False)
+        )
 
     async def sync_connection(
         self, connection: Connection, *, relevance_filter: GmailRelevanceFilter | None = None
@@ -70,7 +98,6 @@ class GmailSyncService:
             self._secrets.save(connection, refreshed.access_token, refreshed.refresh_token)
             await self._session.commit()
             return await self._sync_with_access_token(connection, refreshed.access_token, filters)
-
 
     async def _sync_with_access_token(
         self,
@@ -99,6 +126,9 @@ class GmailSyncService:
         except GmailError as error:
             raise GmailSyncError("Gmail synchronization failed") from error
 
+    # Max pages to fetch on an initial sync — avoids exhausting Google's daily quota.
+    _MAX_INITIAL_SYNC_PAGES = 25
+
     async def _initial_sync(
         self, connection: Connection, access_token: str, filters: GmailRelevanceFilter
     ) -> GmailSyncResult:
@@ -107,20 +137,20 @@ class GmailSyncService:
         message_ids: list[str] = []
         page_token: str | None = None
         seen_tokens: set[str] = set()
-        while True:
+        pages_fetched = 0
+        while pages_fetched < self._MAX_INITIAL_SYNC_PAGES:
             page = await self._gmail.list_messages(access_token, page_token=page_token)
             message_ids.extend(page.message_ids)
+            pages_fetched += 1
             if not page.next_page_token:
                 break
             if page.next_page_token in seen_tokens:
                 raise GmailSyncError("Gmail returned a repeated page token")
             seen_tokens.add(page.next_page_token)
             page_token = page.next_page_token
-        ingested, duplicates, skipped = await self._ingest_messages(
-            connection, access_token, message_ids, filters
-        )
+        counts = await self._ingest_messages(connection, access_token, message_ids, filters)
         await self._advance_cursor(connection, cursor)
-        return GmailSyncResult(str(connection.id), cursor, ingested, duplicates, skipped)
+        return GmailSyncResult(str(connection.id), cursor, *counts)
 
     async def _history_sync(
         self,
@@ -144,12 +174,9 @@ class GmailSyncService:
                 raise GmailSyncError("Gmail returned a repeated page token")
             seen_tokens.add(page.next_page_token)
             page_token = page.next_page_token
-        ingested, duplicates, skipped = await self._ingest_messages(
-            connection, access_token, message_ids, filters
-        )
+        counts = await self._ingest_messages(connection, access_token, message_ids, filters)
         await self._advance_cursor(connection, next_cursor)
-        return GmailSyncResult(str(connection.id), next_cursor, ingested, duplicates, skipped)
-
+        return GmailSyncResult(str(connection.id), next_cursor, *counts)
 
     async def _ingest_messages(
         self,
@@ -157,8 +184,8 @@ class GmailSyncService:
         access_token: str,
         message_ids: list[str],
         filters: GmailRelevanceFilter,
-    ) -> tuple[int, int, int]:
-        ingested = duplicates = skipped = 0
+    ) -> tuple[int, int, int, int, int]:
+        ingested = duplicates = skipped = interpreted = planned = 0
         for message_id in dict.fromkeys(message_ids):
             message = await self._gmail.get_message(access_token, message_id)
             if not filters.matches(message):
@@ -169,7 +196,29 @@ class GmailSyncService:
                 duplicates += 1
             else:
                 ingested += 1
-        return ingested, duplicates, skipped
+            life_created, plan_created = await self._interpret(connection, result.raw_event)
+            if life_created:
+                interpreted += 1
+            if plan_created:
+                planned += 1
+        return ingested, duplicates, skipped, interpreted, planned
+
+    async def _interpret(self, connection: Connection, raw_event: RawEvent) -> tuple[bool, bool]:
+        """Classify and plan when a pipeline is configured; never fail the sync batch."""
+        if self._pipeline is None:
+            return False, False
+        try:
+            user = connection.user if connection.user is not None else None
+            outcome = await self._pipeline.process_raw_event(raw_event, user)
+        except Exception:
+            logger.exception(
+                "gmail post-ingestion pipeline failed",
+                extra={"raw_event_id": str(raw_event.id)},
+            )
+            return False, False
+        if outcome.already_processed:
+            return False, False
+        return outcome.life_event is not None, outcome.plan is not None
 
     @staticmethod
     def _cursor(connection: Connection) -> GmailCursor | None:

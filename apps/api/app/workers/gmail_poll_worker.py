@@ -12,6 +12,7 @@ from app.connectors.google.gmail import GmailClient
 from app.core.config import get_settings
 from app.core.crypto import SecretCipher
 from app.db.session import get_session_factory
+from app.services.ai import build_ai_provider_optional
 from app.services.connection_secrets import ConnectionSecrets
 from app.services.gmail_sync import GmailSyncService
 from app.workers.heartbeat import emit_heartbeat
@@ -64,7 +65,12 @@ class GmailPollWorker:
             settings.encryption_key.get_secret_value(),
             [key.get_secret_value() for key in settings.encryption_previous_keys],
         )
-        return GmailSyncService(session, GmailClient(settings), ConnectionSecrets(cipher))
+        return GmailSyncService(
+            session,
+            GmailClient(settings),
+            ConnectionSecrets(cipher),
+            ai_provider=build_ai_provider_optional(settings),
+        )
 
 
 def _install_signal_handlers(worker: GmailPollWorker) -> None:

@@ -33,11 +33,19 @@ export function ConfirmDialog({
     const trapFocus = (event: KeyboardEvent) => {
       if (event.key === "Escape") return onCancel();
       if (event.key !== "Tab") return;
-      const buttons = dialogRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
+      const buttons =
+        dialogRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
       if (!buttons?.length) return;
-      const first = buttons[0], last = buttons[buttons.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      const first = buttons[0],
+        last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", trapFocus);
     return () => document.removeEventListener("keydown", trapFocus);

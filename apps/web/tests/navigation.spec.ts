@@ -12,6 +12,6 @@ const dashboardRoutes = [
 test("dashboard navigation routes remain protected without a session", async ({ page }) => {
   for (const route of dashboardRoutes) {
     await page.goto(route);
-    await expect(page).toHaveURL(/\/login\?error=auth_not_configured/);
+    await expect(page).toHaveURL(/\/login/);
   }
 });

@@ -3,13 +3,14 @@
 import asyncio
 import logging
 import signal
+import time
 from collections.abc import Callable
 from time import perf_counter
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.logging import bind_log_context
+from app.core.logging import bind_log_context, configure_logging
 from app.core.metrics import metrics
 from app.db.session import get_session_factory
 from app.models.enums import JobStatus
@@ -72,6 +73,8 @@ class DurableWorker:
             return True
 
     async def run(self) -> None:
+        _lock_recovery_every = 60  # seconds
+        _last_recovery: float = 0.0
         while not self._stopping:
 
             async def consume_available() -> int:
@@ -84,10 +87,24 @@ class DurableWorker:
                 *(consume_available() for _ in range(self._concurrency)), return_exceptions=True
             )
             emit_heartbeat(self.worker_id)
+
+            # Periodically release abandoned locks so crashed-job slots free up.
+            now = time.monotonic()
+            if now - _last_recovery >= _lock_recovery_every:
+                try:
+                    async with self._sessions() as session:
+                        recovered = await JobQueue(session).recover_abandoned_locks()
+                        if recovered:
+                            logger.info("worker recovered abandoned locks", extra={"count": recovered})
+                except Exception:
+                    logger.exception("worker lock recovery failed")
+                _last_recovery = now
+
             if not self._stopping and not any(
                 isinstance(result, int) and result for result in completed
             ):
                 await asyncio.sleep(self._poll_interval)
+
 
 
 def _install_signal_handlers(worker: DurableWorker) -> None:
@@ -100,6 +117,7 @@ def _install_signal_handlers(worker: DurableWorker) -> None:
 
 
 async def _main() -> None:
+    configure_logging()
     worker = DurableWorker(get_session_factory())
     _install_signal_handlers(worker)
     await worker.run()

@@ -1,5 +1,6 @@
 """Safely customize only registered optional action inputs."""
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -14,7 +15,16 @@ from app.services.ai.schemas import AIError
 from app.services.plan_graph import CandidateAction, PlanGraph, PlanGraphError
 
 Scalar = StrictStr | StrictInt | StrictFloat | StrictBool
-_FALLBACK_RATIONALE = "Plan customization was unavailable; the original validated plan is retained."
+logger = logging.getLogger(__name__)
+_NO_PROVIDER_RATIONALE = (
+    "AI plan customization is not configured; the original validated plan is retained."
+)
+_INVALID_RESPONSE_RATIONALE = (
+    "AI plan customization returned an invalid response; the original validated plan is retained."
+)
+_UNEXPECTED_FAILURE_RATIONALE = (
+    "AI plan customization failed unexpectedly; the original validated plan is retained."
+)
 
 
 class PlanCustomizationOutput(BaseModel):
@@ -45,7 +55,7 @@ class PlanCustomizer:
     async def customize(self, graph: PlanGraph) -> PlanCustomizationResult:
         graph.validate()
         if self._provider is None:
-            return self._fallback(graph)
+            return self._fallback(graph, _NO_PROVIDER_RATIONALE)
         safe_fields = self._safe_fields(graph)
         try:
             response = await self._provider.generate_structured(
@@ -58,15 +68,20 @@ class PlanCustomizer:
                 actions, max_nodes=graph.max_nodes, max_depth=graph.max_depth
             )
             customized.validate()
-        except (AIError, PlanGraphError, TypeError, ValueError):
-            return self._fallback(graph)
+        except (AIError, PlanGraphError, TypeError, ValueError) as error:
+            logger.warning(
+                "plan customization response rejected",
+                extra={"error_type": type(error).__name__},
+            )
+            return self._fallback(graph, _INVALID_RESPONSE_RATIONALE)
         except Exception:
-            return self._fallback(graph)
+            logger.exception("plan customization failed unexpectedly")
+            return self._fallback(graph, _UNEXPECTED_FAILURE_RATIONALE)
         return PlanCustomizationResult(customized, response.data.rationale)
 
     @staticmethod
-    def _fallback(graph: PlanGraph) -> PlanCustomizationResult:
-        return _fallback(graph)
+    def _fallback(graph: PlanGraph, rationale: str) -> PlanCustomizationResult:
+        return _fallback(graph, rationale)
 
     def _safe_fields(self, graph: PlanGraph) -> dict[str, tuple[str, ...]]:
         return {
@@ -125,5 +140,5 @@ def _replace_input(action: CandidateAction, input_data: Mapping[str, object]) ->
     )
 
 
-def _fallback(graph: PlanGraph) -> PlanCustomizationResult:
-    return PlanCustomizationResult(graph, _FALLBACK_RATIONALE, used_fallback=True)
+def _fallback(graph: PlanGraph, rationale: str) -> PlanCustomizationResult:
+    return PlanCustomizationResult(graph, rationale, used_fallback=True)

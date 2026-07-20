@@ -8,13 +8,34 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.raw_sources import MAX_CONTENT_CHARS, AttachmentMeta, GmailSource
 
 DEFAULT_SENDER_TERMS = (
-    "airline", "booking", "travel", "hotel", "bank", "payroll", "billing", "invoice",
-    "recruit", "client",
+    "airline",
+    "booking",
+    "travel",
+    "hotel",
+    "bank",
+    "payroll",
+    "billing",
+    "invoice",
+    "recruit",
+    "client",
 )
 DEFAULT_SUBJECT_TERMS = (
-    "booking", "reservation", "itinerary", "flight", "travel", "trip", "invoice",
-    "payment", "salary", "contract", "offer", "interview", "renewal", "subscription",
-    "appointment", "confirmation",
+    "booking",
+    "reservation",
+    "itinerary",
+    "flight",
+    "travel",
+    "trip",
+    "invoice",
+    "payment",
+    "salary",
+    "contract",
+    "offer",
+    "interview",
+    "renewal",
+    "subscription",
+    "appointment",
+    "confirmation",
 )
 
 
@@ -24,6 +45,13 @@ class GmailCursor(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     history_id: str = Field(min_length=1, max_length=255)
+
+
+class GmailAttachment(AttachmentMeta):
+    """Provider locator retained only in memory; ``as_source`` strips it before ingestion."""
+
+    attachment_id: str | None = Field(default=None, min_length=1, max_length=1024)
+    inline_data: str | None = Field(default=None, repr=False)
 
 
 class GmailMessage(BaseModel):
@@ -37,7 +65,7 @@ class GmailMessage(BaseModel):
     subject: str = Field(default="", max_length=1000)
     received_at: datetime
     body: str = Field(default="", max_length=MAX_CONTENT_CHARS)
-    attachments: list[AttachmentMeta] = Field(default_factory=list)
+    attachments: list[GmailAttachment] = Field(default_factory=list)
     headers: dict[str, str] = Field(default_factory=dict)
 
     def as_source(self) -> GmailSource:
@@ -47,7 +75,14 @@ class GmailMessage(BaseModel):
             subject=self.subject,
             received_at=self.received_at,
             body=self.body,
-            attachments=self.attachments,
+            attachments=[
+                AttachmentMeta(
+                    name=attachment.name,
+                    mime_type=attachment.mime_type,
+                    size_bytes=attachment.size_bytes,
+                )
+                for attachment in self.attachments
+            ],
         )
 
 

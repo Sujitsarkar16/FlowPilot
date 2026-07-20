@@ -11,6 +11,7 @@ from app.workflows import build_client_launch_workflow
 def _rule() -> CompiledRule:
     names = [
         "client.generate_documents",
+        "client.create_folder",
         "client.create_repository",
         "client.create_calendar_event",
         "client.notify_client",
@@ -51,6 +52,7 @@ def test_client_fixture_builds_private_workspace_and_gated_reply() -> None:
 
     assert {action.action_type for action in graph.ordered_actions} == {
         "client.generate_documents",
+        "client.create_folder",
         "client.create_repository",
         "client.create_calendar_event",
         "client.notify_client",
@@ -59,6 +61,7 @@ def test_client_fixture_builds_private_workspace_and_gated_reply() -> None:
         "client.generate_documents",
     )
     assert set(graph.action_by_key["client.notify_client"].depends_on) == {
+        "client.create_folder",
         "client.create_repository",
         "client.create_calendar_event",
     }

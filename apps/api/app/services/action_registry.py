@@ -49,6 +49,7 @@ class ActionRegistry:
 
 _GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
 _GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events"
+_GOOGLE_GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 
 
 def _definition(
@@ -104,8 +105,8 @@ ACTION_REGISTRY = ActionRegistry(
             "travel.save_ticket",
             "google",
             RiskLevel.GREEN,
-            True,
-            (_GOOGLE_DRIVE_SCOPE,),
+            False,
+            (_GOOGLE_GMAIL_SCOPE,),
             ConnectionProvider.GOOGLE,
             _fields("ticket_name"),
             "automatic",
@@ -171,6 +172,16 @@ ACTION_REGISTRY = ActionRegistry(
             "approval_required",
         ),
         _definition(
+            "client.create_folder",
+            "google",
+            RiskLevel.GREEN,
+            True,
+            (_GOOGLE_DRIVE_SCOPE,),
+            ConnectionProvider.GOOGLE,
+            _fields("folder_name"),
+            "automatic",
+        ),
+        _definition(
             "client.create_repository",
             "github",
             RiskLevel.YELLOW,
@@ -209,6 +220,16 @@ ACTION_REGISTRY = ActionRegistry(
             ConnectionProvider.TELEGRAM,
             _fields("message"),
             "approval_required",
+        ),
+        _definition(
+            "subscription.check_renewal",
+            "google",
+            RiskLevel.GREEN,
+            False,
+            (_GOOGLE_GMAIL_SCOPE,),
+            ConnectionProvider.GOOGLE,
+            _fields(),
+            "automatic",
         ),
         _definition(
             "salary.update_budget",

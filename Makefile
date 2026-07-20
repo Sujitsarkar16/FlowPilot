@@ -1,4 +1,4 @@
-.PHONY: dev-api dev-web dev-db dev-mail stop logs reset-db
+.PHONY: dev-api dev-web dev-mail stop-mail logs-mail
 
 dev-api:
 	cd apps/api && .venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
@@ -6,18 +6,11 @@ dev-api:
 dev-web:
 	cd apps/web && npm run dev
 
-dev-db:
-	docker compose up -d postgres
-
 dev-mail:
 	docker compose --profile mail up -d mailpit
 
-stop:
-	docker compose down
+stop-mail:
+	docker compose --profile mail down
 
-logs:
-	docker compose logs -f --tail=100
-
-reset-db:
-	@echo "This deletes the local PostgreSQL volume."
-	docker compose down -v
+logs-mail:
+	docker compose --profile mail logs -f --tail=100

@@ -36,13 +36,16 @@ describe("ManualEventForm", () => {
     render(<ManualEventForm />);
 
     await user.type(screen.getByLabelText("What happened?"), "Booked a flight to Tokyo");
-    await user.click(screen.getByRole("button", { name: "Interpret event" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() =>
-      expect(mockedApi.createManualEvent).toHaveBeenCalledWith({
-        text: "Booked a flight to Tokyo",
-        category_hint: null,
-      }),
+      expect(mockedApi.createManualEvent).toHaveBeenCalledWith(
+        {
+          text: "Booked a flight to Tokyo",
+          category_hint: null,
+        },
+        { timeoutMs: 60_000 },
+      ),
     );
     await waitFor(() => expect(push).toHaveBeenCalledWith("/dashboard/events/event-1"));
   });
@@ -53,7 +56,7 @@ describe("ManualEventForm", () => {
 
     const textarea = screen.getByLabelText("What happened?");
     textarea.removeAttribute("required");
-    await user.click(screen.getByRole("button", { name: "Interpret event" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(mockedApi.createManualEvent).not.toHaveBeenCalled();
     expect(await screen.findByRole("alert")).toHaveTextContent(

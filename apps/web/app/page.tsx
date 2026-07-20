@@ -74,7 +74,12 @@ const plans = [
     description: "For individuals who want their whole day in flow.",
     price: "$12",
     detail: "per month",
-    features: ["Unlimited connected services", "5,000 monthly actions", "Custom standing orders", "Priority support"],
+    features: [
+      "Unlimited connected services",
+      "5,000 monthly actions",
+      "Custom standing orders",
+      "Priority support",
+    ],
     highlighted: true,
   },
   {
@@ -82,7 +87,12 @@ const plans = [
     description: "For teams automating their most important work.",
     price: "$32",
     detail: "per member / month",
-    features: ["Everything in Pilot", "Shared approval policies", "Team activity history", "Workspace controls"],
+    features: [
+      "Everything in Pilot",
+      "Shared approval policies",
+      "Team activity history",
+      "Workspace controls",
+    ],
   },
 ];
 
@@ -198,10 +208,13 @@ export default function HomePage() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-slate-950">Good morning, Alex</p>
-                      <p className="mt-1 text-xs text-slate-500">Here&apos;s what your workflows are doing today.</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Here&apos;s what your workflows are doing today.
+                      </p>
                     </div>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All systems normal
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All systems
+                      normal
                     </span>
                   </div>
                   <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -210,8 +223,13 @@ export default function HomePage() {
                       ["1", "Needs your approval"],
                       ["4", "Active connections"],
                     ].map(([value, label]) => (
-                      <div key={label} className="rounded-lg border border-slate-200 bg-white p-3.5">
-                        <p className="text-xl font-semibold tracking-tight text-slate-950">{value}</p>
+                      <div
+                        key={label}
+                        className="rounded-lg border border-slate-200 bg-white p-3.5"
+                      >
+                        <p className="text-xl font-semibold tracking-tight text-slate-950">
+                          {value}
+                        </p>
                         <p className="mt-1 text-xs text-slate-500">{label}</p>
                       </div>
                     ))}
@@ -223,22 +241,34 @@ export default function HomePage() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-slate-900">Review new subscription</p>
+                          <p className="text-sm font-semibold text-slate-900">
+                            Review new subscription
+                          </p>
                           <span className="text-xs text-slate-500">Just now</span>
                         </div>
                         <p className="mt-1 text-xs leading-5 text-slate-600">
                           A $24.00 monthly charge is ready for your approval.
                         </p>
                         <div className="mt-3 flex gap-2">
-                          <span className="rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white">Review</span>
-                          <span className="rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Dismiss</span>
+                          <span className="rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white">
+                            Review
+                          </span>
+                          <span className="rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                            Dismiss
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
                   <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
-                    <CircleCheckBig className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
-                    <p className="text-xs text-slate-600"><span className="font-semibold text-slate-800">Calendar brief sent</span> to your inbox automatically.</p>
+                    <CircleCheckBig
+                      className="h-4 w-4 shrink-0 text-emerald-500"
+                      aria-hidden="true"
+                    />
+                    <p className="text-xs text-slate-600">
+                      <span className="font-semibold text-slate-800">Calendar brief sent</span> to
+                      your inbox automatically.
+                    </p>
                     <span className="ml-auto text-xs text-slate-400">9:00 AM</span>
                   </div>
                 </div>
@@ -250,22 +280,37 @@ export default function HomePage() {
 
       <section className="border-y border-slate-100 bg-slate-50 py-7">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-3 px-5 text-center text-sm font-medium text-slate-500 sm:px-8">
-          <span className="inline-flex items-center gap-2"><LockKeyhole className="h-4 w-4 text-indigo-500" /> Secure by design</span>
-          <span className="inline-flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-indigo-500" /> Every action explained</span>
-          <span className="inline-flex items-center gap-2"><Zap className="h-4 w-4 text-indigo-500" /> Built for everyday flow</span>
+          <span className="inline-flex items-center gap-2">
+            <LockKeyhole className="h-4 w-4 text-indigo-500" /> Secure by design
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <FileCheck2 className="h-4 w-4 text-indigo-500" /> Every action explained
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Zap className="h-4 w-4 text-indigo-500" /> Built for everyday flow
+          </span>
         </div>
       </section>
 
       <section id="features" className="scroll-mt-20 px-5 py-20 sm:px-8 sm:py-28">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">Built for trust</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">Automation you can actually feel good about.</h2>
-            <p className="mt-5 text-lg leading-8 text-slate-600">Less tab switching. Less second guessing. More space to focus on what matters.</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">
+              Built for trust
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+              Automation you can actually feel good about.
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-slate-600">
+              Less tab switching. Less second guessing. More space to focus on what matters.
+            </p>
           </div>
           <div className="mt-12 grid gap-5 md:grid-cols-3">
             {features.map(({ icon: Icon, title, description }) => (
-              <article key={title} className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-200/60">
+              <article
+                key={title}
+                className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-200/60"
+              >
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   <Icon className="h-5 w-5" aria-hidden="true" />
                 </span>
@@ -277,20 +322,36 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="how-it-works" className="scroll-mt-20 bg-slate-950 px-5 py-20 text-white sm:px-8 sm:py-28">
+      <section
+        id="how-it-works"
+        className="scroll-mt-20 bg-slate-950 px-5 py-20 text-white sm:px-8 sm:py-28"
+      >
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-300">How it works</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">A better system in three simple moves.</h2>
-              <p className="mt-5 max-w-lg text-lg leading-8 text-slate-300">Start with the tools you know. Then let FlowPilot make the repeatable parts feel effortless.</p>
-              <a className="mt-8 inline-flex items-center text-sm font-semibold text-white transition hover:text-indigo-300" href="/login?returnTo=%2Fdashboard">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-300">
+                How it works
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">
+                A better system in three simple moves.
+              </h2>
+              <p className="mt-5 max-w-lg text-lg leading-8 text-slate-300">
+                Start with the tools you know. Then let FlowPilot make the repeatable parts feel
+                effortless.
+              </p>
+              <a
+                className="mt-8 inline-flex items-center text-sm font-semibold text-white transition hover:text-indigo-300"
+                href="/login?returnTo=%2Fdashboard"
+              >
                 Start your workspace <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
               </a>
             </div>
             <ol className="grid gap-4 sm:grid-cols-3">
               {steps.map((step) => (
-                <li key={step.number} className="rounded-2xl border border-white/10 bg-white/[0.06] p-6">
+                <li
+                  key={step.number}
+                  className="rounded-2xl border border-white/10 bg-white/[0.06] p-6"
+                >
                   <p className="text-sm font-semibold text-indigo-300">{step.number}</p>
                   <h3 className="mt-8 text-lg font-semibold">{step.title}</h3>
                   <p className="mt-3 text-sm leading-6 text-slate-300">{step.description}</p>
@@ -304,27 +365,57 @@ export default function HomePage() {
       <section id="pricing" className="scroll-mt-20 bg-slate-50 px-5 py-20 sm:px-8 sm:py-28">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">Simple pricing</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">Start small. Scale when you&apos;re ready.</h2>
-            <p className="mt-5 text-lg leading-8 text-slate-600">Choose a plan that matches the pace of your life and work.</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">
+              Simple pricing
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+              Start small. Scale when you&apos;re ready.
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-slate-600">
+              Choose a plan that matches the pace of your life and work.
+            </p>
           </div>
           <div className="mt-12 grid gap-5 lg:grid-cols-3 lg:items-stretch">
             {plans.map((plan) => (
-              <article key={plan.name} className={`relative rounded-2xl border p-7 shadow-sm ${plan.highlighted ? "border-indigo-600 bg-indigo-600 text-white shadow-xl shadow-indigo-200" : "border-slate-200 bg-white text-slate-900"}`}>
-                {plan.highlighted && <p className="absolute -top-3 left-6 rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">Most popular</p>}
+              <article
+                key={plan.name}
+                className={`relative rounded-2xl border p-7 shadow-sm ${plan.highlighted ? "border-indigo-600 bg-indigo-600 text-white shadow-xl shadow-indigo-200" : "border-slate-200 bg-white text-slate-900"}`}
+              >
+                {plan.highlighted && (
+                  <p className="absolute -top-3 left-6 rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">
+                    Most popular
+                  </p>
+                )}
                 <h3 className="text-lg font-semibold">{plan.name}</h3>
-                <p className={`mt-2 min-h-12 text-sm leading-6 ${plan.highlighted ? "text-indigo-100" : "text-slate-600"}`}>{plan.description}</p>
+                <p
+                  className={`mt-2 min-h-12 text-sm leading-6 ${plan.highlighted ? "text-indigo-100" : "text-slate-600"}`}
+                >
+                  {plan.description}
+                </p>
                 <div className="mt-6 flex items-end gap-2">
                   <span className="text-4xl font-semibold tracking-tight">{plan.price}</span>
-                  <span className={`pb-1 text-sm ${plan.highlighted ? "text-indigo-100" : "text-slate-500"}`}>{plan.detail}</span>
+                  <span
+                    className={`pb-1 text-sm ${plan.highlighted ? "text-indigo-100" : "text-slate-500"}`}
+                  >
+                    {plan.detail}
+                  </span>
                 </div>
-                <a className={`mt-7 flex h-11 items-center justify-center rounded-lg text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${plan.highlighted ? "bg-white text-indigo-700 hover:bg-indigo-50 focus-visible:outline-white" : "bg-slate-950 text-white hover:bg-slate-800 focus-visible:outline-slate-950"}`} href="/login?returnTo=%2Fdashboard">
+                <a
+                  className={`mt-7 flex h-11 items-center justify-center rounded-lg text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${plan.highlighted ? "bg-white text-indigo-700 hover:bg-indigo-50 focus-visible:outline-white" : "bg-slate-950 text-white hover:bg-slate-800 focus-visible:outline-slate-950"}`}
+                  href="/login?returnTo=%2Fdashboard"
+                >
                   Get started
                 </a>
                 <ul className="mt-7 space-y-3">
                   {plan.features.map((feature) => (
-                    <li key={feature} className={`flex items-start gap-2.5 text-sm ${plan.highlighted ? "text-indigo-50" : "text-slate-600"}`}>
-                      <Check className={`mt-0.5 h-4 w-4 shrink-0 ${plan.highlighted ? "text-white" : "text-emerald-600"}`} aria-hidden="true" />
+                    <li
+                      key={feature}
+                      className={`flex items-start gap-2.5 text-sm ${plan.highlighted ? "text-indigo-50" : "text-slate-600"}`}
+                    >
+                      <Check
+                        className={`mt-0.5 h-4 w-4 shrink-0 ${plan.highlighted ? "text-white" : "text-emerald-600"}`}
+                        aria-hidden="true"
+                      />
                       {feature}
                     </li>
                   ))}
@@ -337,14 +428,27 @@ export default function HomePage() {
 
       <section id="contact" className="scroll-mt-20 px-5 py-20 sm:px-8 sm:py-28">
         <div className="mx-auto max-w-5xl rounded-3xl bg-indigo-600 px-6 py-12 text-center text-white shadow-2xl shadow-indigo-200 sm:px-12 sm:py-16">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-200">Ready when you are</p>
-          <h2 className="mx-auto mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-5xl">Give your automations a trusted home.</h2>
-          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-indigo-100">Set up your workspace in minutes, or get in touch to talk through the workflows that matter most.</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-200">
+            Ready when you are
+          </p>
+          <h2 className="mx-auto mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-5xl">
+            Give your automations a trusted home.
+          </h2>
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-indigo-100">
+            Set up your workspace in minutes, or get in touch to talk through the workflows that
+            matter most.
+          </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <a className="inline-flex h-12 items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" href="/login?returnTo=%2Fdashboard">
+            <a
+              className="inline-flex h-12 items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              href="/login?returnTo=%2Fdashboard"
+            >
               Start for free <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
             </a>
-            <a className="inline-flex h-12 items-center justify-center rounded-lg border border-indigo-400 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" href="mailto:hello@flowpilot.app">
+            <a
+              className="inline-flex h-12 items-center justify-center rounded-lg border border-indigo-400 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              href="mailto:hello@flowpilot.app"
+            >
               <Mail className="mr-2 h-4 w-4" aria-hidden="true" /> Contact us
             </a>
           </div>
@@ -358,12 +462,27 @@ export default function HomePage() {
             <span className="font-semibold tracking-tight">FlowPilot</span>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-slate-500">
-            <a className="transition hover:text-indigo-600" href="#features">Features</a>
-            <a className="transition hover:text-indigo-600" href="#pricing">Pricing</a>
-            <a className="transition hover:text-indigo-600" href="mailto:hello@flowpilot.app">Contact</a>
-            <a className="inline-flex items-center gap-1.5 transition hover:text-indigo-600" href="https://github.com" target="_blank" rel="noreferrer"><Github className="h-4 w-4" aria-hidden="true" /> GitHub</a>
+            <a className="transition hover:text-indigo-600" href="#features">
+              Features
+            </a>
+            <a className="transition hover:text-indigo-600" href="#pricing">
+              Pricing
+            </a>
+            <a className="transition hover:text-indigo-600" href="mailto:hello@flowpilot.app">
+              Contact
+            </a>
+            <a
+              className="inline-flex items-center gap-1.5 transition hover:text-indigo-600"
+              href="https://github.com"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Github className="h-4 w-4" aria-hidden="true" /> GitHub
+            </a>
           </div>
-          <p className="text-sm text-slate-400">© {new Date().getFullYear()} FlowPilot. Move wisely.</p>
+          <p className="text-sm text-slate-400">
+            © {new Date().getFullYear()} FlowPilot. Move wisely.
+          </p>
         </div>
       </footer>
     </main>

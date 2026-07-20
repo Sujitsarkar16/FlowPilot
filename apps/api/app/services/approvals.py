@@ -126,12 +126,15 @@ class ApprovalService:
         now = datetime.now(UTC)
         expired = await self._approvals.list_expired(user_id, now)
         changed = False
+        plans_to_refresh: set[int] = set()
         for approval in expired:
             if await self._approvals.expire_if_pending(approval.id, now):
                 await self._finish_expired(approval)
+                plans_to_refresh.add(id(approval.action.plan))
                 changed = True
         if changed:
             await self._session.commit()
+
 
     async def _finish_expired(self, approval: Approval) -> None:
         await self._session.refresh(approval)

@@ -19,10 +19,12 @@ ActionType = Literal[
     "travel.get_weather",
     "travel.generate_documents",
     "travel.notify_family",
+    "client.create_folder",
     "client.create_repository",
     "client.generate_documents",
     "client.create_calendar_event",
     "client.notify_client",
+    "subscription.check_renewal",
     "salary.update_budget",
     "salary.propose_transfer",
 ]

@@ -2,11 +2,14 @@ import pytest
 from sqlalchemy import select
 
 from app.connectors.base import MockConnector
+from app.core.config import Settings
 from app.models.enums import ActionStatus, JobStatus, PlanStatus
+from app.models.event_attachment import EventAttachment
 from app.schemas.connector import ConnectorErrorCategory
 from app.services.action_executor import ActionExecutor
 from app.services.connector_registry import ConnectorRegistry
 from app.services.job_queue import JobQueue
+from app.services.runtime_connectors import build_runtime_connector_registry
 from tests.execution_helpers import action_state
 
 
@@ -62,3 +65,43 @@ async def test_waiting_approval_action_is_never_executed(session) -> None:
     )
 
     assert connector.executions == []
+
+
+@pytest.mark.asyncio
+async def test_executor_saves_generated_documents_in_event_folder(session) -> None:
+    user, plan, action = await action_state(session)
+    action.action_type = "travel.generate_documents"
+    action.connector = "internal"
+    await session.commit()
+    queue = JobQueue(session)
+    await queue.enqueue_action(action)
+    claimed = await queue.claim_next("worker")
+    assert claimed is not None
+
+    await ActionExecutor(
+        session,
+        queue=queue,
+        connectors=build_runtime_connector_registry(session, Settings(_env_file=None)),
+    ).execute(claimed)
+    await session.refresh(action)
+    assert action.status is ActionStatus.COMPLETED, action.last_error
+    documents = list(
+        await session.scalars(
+            select(EventAttachment)
+            .where(
+                EventAttachment.user_id == user.id,
+                EventAttachment.life_event_id == plan.source_event_id,
+            )
+            .order_by(EventAttachment.filename)
+        )
+    )
+
+    assert [document.mime_type for document in documents] == [
+        "text/markdown",
+        "text/markdown",
+    ]
+    assert {document.filename.split("-", 1)[0] for document in documents} == {
+        "itinerary",
+        "packing_checklist",
+    }
+    assert all(document.content for document in documents)

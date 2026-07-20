@@ -19,4 +19,5 @@ class PlanRead(BaseModel):
     version: int
     is_shadow: bool = False
     execution_requested: bool = False
+    customization_fallback: bool = False  # True when AI customization failed and default plan was used
     actions: list[ActionRead] = Field(default_factory=list)

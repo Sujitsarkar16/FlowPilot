@@ -29,6 +29,7 @@ def test_travel_and_client_rules_validate() -> None:
     client = rule("client.create_repository", "github", "yellow", "approval_required")
     client["trigger_event_types"] = ["client_opportunity"]
     CompiledRule.model_validate(client)
+    CompiledRule.model_validate(rule("client.create_folder", "google", "green", "automatic"))
 
 
 def test_unknown_or_mismatched_actions_fail() -> None:

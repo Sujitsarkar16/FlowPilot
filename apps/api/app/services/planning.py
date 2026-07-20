@@ -66,21 +66,39 @@ class PlanningService:
             if existing is not None:
                 self._observe("existing", started, event.id, existing.id)
                 return existing
-        rule = await self._first_matching_rule(user.id, event)
-        if rule is None:
+        rules = await self._all_matching_rules(user.id, event)
+        if not rules:
             metrics.observe("plans", "failed", perf_counter() - started)
             raise NoMatchingStandingOrderError("No enabled standing order matches this event")
-        graph = build_workflow(event, rule)
-        customization = await self._customizer.customize(graph)
+        # Merge graphs from all matching standing orders.
+        combined_actions: list = []
+        combined_rationale_parts: list[str] = []
+        any_fallback = False
+        for rule in rules:
+            graph = build_workflow(event, rule)
+            customization = await self._customizer.customize(graph)
+            combined_actions.extend(customization.graph.actions)
+            combined_rationale_parts.append(customization.rationale)
+            if customization.used_fallback:
+                any_fallback = True
+        from app.services.plan_graph import PlanGraph
+        try:
+            merged_graph = PlanGraph.from_actions(combined_actions)
+        except Exception:
+            merged_graph = build_workflow(event, rules[0])
+        primary_rule = rules[0]
         return await self._persist(
-            user, event, rule, customization.graph, customization.rationale, started
+            user, event, primary_rule, merged_graph, " | ".join(combined_rationale_parts), started,
+            customization_fallback=any_fallback,
         )
 
     async def plan(self, user: User, event_id: UUID, *, replay: bool = False) -> Plan:
         """Compatibility alias for callers that name this operation ``plan``."""
         return await self.create(user, event_id, replay=replay)
 
-    async def _first_matching_rule(self, user_id: UUID, event: LifeEvent) -> CompiledRule | None:
+    async def _all_matching_rules(self, user_id: UUID, event: LifeEvent) -> list[CompiledRule]:
+        """Return ALL enabled standing orders that match this event (not just the first)."""
+        matched: list[CompiledRule] = []
         for order in await self._orders.list_matchable(user_id):
             if order.compiled_rule is None:
                 continue
@@ -91,8 +109,8 @@ class PlanningService:
             if event.type in rule.trigger_event_types and _conditions_match(
                 rule.entity_conditions, event.entities
             ):
-                return rule
-        return None
+                matched.append(rule)
+        return matched
 
     async def _persist(
         self,
@@ -102,6 +120,8 @@ class PlanningService:
         graph: PlanGraph,
         rationale: str,
         started: float,
+        *,
+        customization_fallback: bool = False,
     ) -> Plan:
         connections = await self._connections.list_connected(user.id)
         plan = Plan(
@@ -113,6 +133,9 @@ class PlanningService:
             status=PlanStatus.POLICY_CHECKED,
             is_shadow=user.default_autonomy.value == "observe",
         )
+        # Store fallback flag so the API can surface it
+        if customization_fallback:
+            plan.planner_rationale = f"[fallback] {rationale}"
         try:
             await self._plans.add(plan)
             actions_by_key: dict[str, Action] = {}

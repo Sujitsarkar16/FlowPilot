@@ -17,6 +17,7 @@ This folder is the implementation source of truth for the FlowPilot demo MVP. It
 11. [Ponytail integration](11-ponytail-integration.md) — minimal-development rules and their FlowPilot safety boundary.
 12. [End-to-end development plan](12-end-to-end-development-plan.md) — ordered milestones, dependencies, exit gates, and first ticket.
 13. [Frontend architecture — M1](13-frontend-architecture.md) — initial App Router structure and evolution triggers.
+14. [FlowPilot use-case playbook](14-flowpilot-use-case-playbook.md) — configure, run, verify, and safely clear supported workflows.
 
 ## Operating principles
 

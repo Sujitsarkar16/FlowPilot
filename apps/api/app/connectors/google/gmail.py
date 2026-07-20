@@ -8,16 +8,16 @@ from email.header import decode_header, make_header
 from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
 from app.core.config import Settings
-from app.schemas.gmail import GmailMessage
+from app.schemas.gmail import GmailAttachment, GmailMessage
 from app.schemas.raw_sources import (
     MAX_ATTACHMENT_BYTES,
     MAX_ATTACHMENTS,
     MAX_CONTENT_CHARS,
-    AttachmentMeta,
 )
 
 MAX_MIME_DEPTH = 12
@@ -86,9 +86,16 @@ class GmailClient:
         self._transport = transport
 
     async def list_messages(
-        self, access_token: str, *, page_token: str | None = None, query: str | None = None
+        self,
+        access_token: str,
+        *,
+        page_token: str | None = None,
+        query: str | None = None,
+        max_results: int = 100,
     ) -> GmailPage:
-        params: dict[str, str | int] = {"maxResults": 100}
+        if not 1 <= max_results <= 100:
+            raise ValueError("max_results must be between 1 and 100")
+        params: dict[str, str | int] = {"maxResults": max_results}
         if page_token:
             params["pageToken"] = page_token
         if query:
@@ -124,13 +131,41 @@ class GmailClient:
                 if isinstance(message_id, str) and message_id:
                     message_ids.append(message_id)
         history_id = payload.get("historyId")
-        return GmailPage(tuple(dict.fromkeys(message_ids)), self._token(payload), history_id if isinstance(history_id, str) else None)
+        return GmailPage(
+            tuple(dict.fromkeys(message_ids)),
+            self._token(payload),
+            history_id if isinstance(history_id, str) else None,
+        )
 
     async def get_message(self, access_token: str, message_id: str) -> GmailMessage:
         payload = await self._request(
-            "GET", f"{self.messages_endpoint}/{message_id}", access_token, params={"format": "full"}
+            "GET",
+            f"{self.messages_endpoint}/{quote(message_id, safe='')}",
+            access_token,
+            params={"format": "full"},
         )
         return self._parse_message(payload)
+
+    async def get_attachment(
+        self, access_token: str, message_id: str, attachment: GmailAttachment
+    ) -> bytes:
+        data = attachment.inline_data
+        if data is None:
+            if not attachment.attachment_id:
+                raise GmailError("Gmail attachment content is unavailable")
+            payload = await self._request(
+                "GET",
+                f"{self.messages_endpoint}/{quote(message_id, safe='')}/attachments/"
+                f"{quote(attachment.attachment_id, safe='')}",
+                access_token,
+            )
+            data = payload.get("data")
+            if not isinstance(data, str):
+                raise GmailError("Gmail returned an invalid attachment")
+        content = self._decode_bytes(data, MAX_ATTACHMENT_BYTES)
+        if not content or len(content) != attachment.size_bytes:
+            raise GmailError("Gmail returned an invalid attachment")
+        return content
 
     async def profile_history_id(self, access_token: str) -> str:
         payload = await self._request("GET", self.profile_endpoint, access_token)
@@ -138,7 +173,6 @@ class GmailClient:
         if not isinstance(history_id, str) or not history_id:
             raise GmailError("Gmail returned an invalid profile")
         return history_id
-
 
     async def refresh_access_token(self, refresh_token: str) -> GmailAccessToken:
         settings = self._settings
@@ -204,9 +238,10 @@ class GmailClient:
         if not isinstance(value, list):
             raise GmailError("Gmail returned an invalid message list")
         return tuple(
-            item["id"] for item in value if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"]
+            item["id"]
+            for item in value
+            if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"]
         )
-
 
     def _parse_message(self, payload: dict[str, Any]) -> GmailMessage:
         message_id = payload.get("id")
@@ -217,12 +252,14 @@ class GmailClient:
         received_at = self._received_at(payload.get("internalDate"), headers.get("date"))
         text_parts: list[str] = []
         html_parts: list[str] = []
-        attachments: list[AttachmentMeta] = []
+        attachments: list[GmailAttachment] = []
         self._parse_part(part, text_parts, html_parts, attachments, depth=0, parts_seen=[0])
         body = "\n".join(text_parts or html_parts)[:MAX_CONTENT_CHARS]
         return GmailMessage(
             message_id=message_id,
-            history_id=payload.get("historyId") if isinstance(payload.get("historyId"), str) else None,
+            history_id=payload.get("historyId")
+            if isinstance(payload.get("historyId"), str)
+            else None,
             sender=headers.get("from", "")[:320],
             subject=headers.get("subject", "")[:1000],
             received_at=received_at,
@@ -270,13 +307,12 @@ class GmailClient:
                 pass
         raise GmailError("Gmail returned a message without a valid received time")
 
-
     def _parse_part(
         self,
         part: dict[str, Any],
         text_parts: list[str],
         html_parts: list[str],
-        attachments: list[AttachmentMeta],
+        attachments: list[GmailAttachment],
         *,
         depth: int,
         parts_seen: list[int],
@@ -296,8 +332,22 @@ class GmailClient:
                 and mime_type.casefold() in SUPPORTED_ATTACHMENT_MIME_TYPES
                 and len(attachments) < MAX_ATTACHMENTS
             ):
+                attachment_id = body.get("attachmentId") if isinstance(body, dict) else None
+                inline_data = body.get("data") if isinstance(body, dict) else None
                 attachments.append(
-                    AttachmentMeta(name=filename.strip()[:255], mime_type=mime_type[:128], size_bytes=size)
+                    GmailAttachment(
+                        name=filename.strip()[:255],
+                        mime_type=mime_type[:128],
+                        size_bytes=size,
+                        attachment_id=(
+                            attachment_id
+                            if isinstance(attachment_id, str) and attachment_id
+                            else None
+                        ),
+                        inline_data=(
+                            inline_data if isinstance(inline_data, str) and inline_data else None
+                        ),
+                    )
                 )
             return
         if isinstance(body, dict) and isinstance(body.get("data"), str):
@@ -312,17 +362,36 @@ class GmailClient:
             for child in children:
                 if isinstance(child, dict):
                     self._parse_part(
-                        child, text_parts, html_parts, attachments, depth=depth + 1, parts_seen=parts_seen
+                        child,
+                        text_parts,
+                        html_parts,
+                        attachments,
+                        depth=depth + 1,
+                        parts_seen=parts_seen,
                     )
+
+    @staticmethod
+    def _decode_bytes(value: str, max_bytes: int) -> bytes:
+        if len(value) > max_bytes * 2:
+            raise GmailError("Gmail returned an oversized attachment")
+        try:
+            padding = "=" * (-len(value) % 4)
+            decoded = base64.b64decode(
+                (value + padding).encode("ascii"), altchars=b"-_", validate=True
+            )
+        except (ValueError, UnicodeEncodeError, binascii.Error):
+            raise GmailError("Gmail returned invalid encoded content") from None
+        if len(decoded) > max_bytes:
+            raise GmailError("Gmail returned an oversized attachment")
+        return decoded
 
     @staticmethod
     def _body_text(value: str) -> str:
         if len(value) > MAX_ENCODED_BODY_BYTES:
             return ""
         try:
-            padding = "=" * (-len(value) % 4)
-            decoded = base64.b64decode((value + padding).encode("ascii"), altchars=b"-_", validate=True)
-        except (ValueError, UnicodeEncodeError, binascii.Error):
+            decoded = GmailClient._decode_bytes(value, MAX_CONTENT_CHARS * 4)
+        except GmailError:
             return ""
         return decoded.decode("utf-8", errors="replace")[:MAX_CONTENT_CHARS]
 

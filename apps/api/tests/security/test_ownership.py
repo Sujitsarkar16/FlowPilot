@@ -73,6 +73,7 @@ async def test_every_resource_route_hides_owned_resources_from_other_users(
         ("DELETE", f"/api/v1/connections/{connection.id}", None),
         ("POST", f"/api/v1/connections/{connection.id}/test", None),
         ("GET", f"/api/v1/events/{event_id}", None),
+        ("DELETE", f"/api/v1/events/{event_id}", None),
         ("GET", f"/api/v1/events/{event_id}/timeline", None),
         ("POST", f"/api/v1/events/{event_id}/plan", {}),
         ("GET", f"/api/v1/plans/{plan.id}", None),

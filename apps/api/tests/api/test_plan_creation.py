@@ -109,8 +109,8 @@ async def test_plan_endpoint_succeeds_with_template_fallback_when_ai_is_unconfig
     body = response.json()
     assert body["source_event_id"] == str(event.id)
     assert (
-        body["planner_rationale"]
-        == "Plan customization was unavailable; the original validated plan is retained."
+        body["planner_rationale"] == "[fallback] AI plan customization is not configured; "
+        "the original validated plan is retained."
     )
     assert [
         (action["action_type"], action["status"], action["policy_reason"])

@@ -12,12 +12,11 @@ const makeClient = (fetchFn: typeof fetch, extras = {}) =>
   createApiClient({
     baseUrl: "https://api.example.test",
     fetchFn,
-    getAccessToken: async () => "token",
     ...extras,
   });
 
 describe("typed API client", () => {
-  it("returns the typed current user and sends the session token", async () => {
+  it("returns the typed current user and includes browser credentials", async () => {
     const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(
       response({
         id: "user-1",
@@ -29,7 +28,8 @@ describe("typed API client", () => {
     const user = await makeClient(fetchFn).getMe();
     expect(user).toMatchObject({ id: "user-1", default_autonomy: "safe_actions" });
     const [, init] = fetchFn.mock.calls[0];
-    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer token");
+    expect(new Headers(init?.headers).get("Authorization")).toBeNull();
+    expect(init?.credentials).toBe("include");
   });
 
   it("normalizes validation details and request IDs", async () => {
@@ -68,15 +68,10 @@ describe("typed API client", () => {
         ),
       );
     });
-    const client = makeClient(fetchFn, {
-      getAccessToken: async () => {
-        controller.abort();
-        return "token";
-      },
-    });
-    await expect(
-      client.request("/api/v1/me", { signal: controller.signal }),
-    ).rejects.toBeInstanceOf(ApiAbortError);
+    const client = makeClient(fetchFn);
+    const request = client.request("/api/v1/me", { signal: controller.signal });
+    controller.abort();
+    await expect(request).rejects.toBeInstanceOf(ApiAbortError);
   });
 
   it("invokes configured session handling after a 401", async () => {

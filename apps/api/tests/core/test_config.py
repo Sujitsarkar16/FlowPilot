@@ -3,20 +3,13 @@ from pydantic import ValidationError
 
 from app.core.config import Settings
 
-SUPABASE_DATABASE_URL = (
-    "postgresql+asyncpg://postgres:password@db.example.supabase.co:5432/postgres"
-)
-SUPABASE_POOLER_DATABASE_URL = (
-    "postgresql+asyncpg://postgres.example:password@"
-    "aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
-)
+DATABASE_URL = "postgresql+asyncpg://postgres:password@db.example.test:5432/flowpilot"
 
 
-@pytest.mark.parametrize("database_url", (SUPABASE_DATABASE_URL, SUPABASE_POOLER_DATABASE_URL))
-def test_development_settings_accept_supabase_database_urls(database_url: str) -> None:
-    settings = Settings(_env_file=None, database_url=database_url)
+def test_development_settings_accept_postgres_asyncpg_urls() -> None:
+    settings = Settings(_env_file=None, database_url=DATABASE_URL)
     assert settings.environment == "development"
-    assert settings.database_url == database_url
+    assert settings.database_url == DATABASE_URL
 
 
 def test_local_or_non_postgres_database_urls_are_rejected() -> None:
@@ -26,19 +19,42 @@ def test_local_or_non_postgres_database_urls_are_rejected() -> None:
 
 def test_production_requires_encryption() -> None:
     with pytest.raises(ValidationError, match="production requires ENCRYPTION_KEY"):
+        Settings(_env_file=None, database_url=DATABASE_URL, FLOWPILOT_ENV="production")
+
+
+def test_production_requires_local_authentication_secrets() -> None:
+    with pytest.raises(ValidationError, match="local authentication secrets"):
         Settings(
             _env_file=None,
-            database_url=SUPABASE_DATABASE_URL,
+            database_url=DATABASE_URL,
             FLOWPILOT_ENV="production",
-            supabase_url="https://project.supabase.co",
+            encryption_key="encryption-key",
         )
 
 
-def test_production_requires_supabase_auth_url() -> None:
-    with pytest.raises(ValidationError, match="production requires SUPABASE_URL"):
+def test_production_requires_google_and_secure_cookies() -> None:
+    with pytest.raises(ValidationError, match="Google authentication credentials"):
         Settings(
             _env_file=None,
-            database_url=SUPABASE_DATABASE_URL,
+            database_url=DATABASE_URL,
             FLOWPILOT_ENV="production",
-            encryption_key="a" * 32,
+            encryption_key="encryption-key",
+            auth_session_secret="session-secret",
+            auth_state_secret="state-secret",
         )
+    with pytest.raises(ValidationError, match="AUTH_COOKIE_SECURE"):
+        Settings(
+            _env_file=None,
+            database_url=DATABASE_URL,
+            FLOWPILOT_ENV="production",
+            encryption_key="encryption-key",
+            auth_session_secret="session-secret",
+            auth_state_secret="state-secret",
+            auth_google_client_id="google-client",
+            auth_google_client_secret="google-secret",
+        )
+
+
+def test_empty_cookie_domain_is_treated_as_host_only() -> None:
+    settings = Settings(_env_file=None, database_url=DATABASE_URL, auth_cookie_domain="")
+    assert settings.auth_cookie_domain is None

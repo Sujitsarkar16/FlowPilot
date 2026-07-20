@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { AuthForm } from "@/components/auth/auth-form";
 
 export default function SignUpPage() {
@@ -10,7 +12,9 @@ export default function SignUpPage() {
             Create your account
           </h1>
         </div>
-        <AuthForm mode="sign-up" />
+        <Suspense fallback={<p className="text-center text-sm text-slate-500">Loading…</p>}>
+          <AuthForm mode="sign-up" />
+        </Suspense>
       </section>
     </main>
   );

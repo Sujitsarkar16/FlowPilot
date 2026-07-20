@@ -66,7 +66,7 @@ def get_plan_execution_service(session: AsyncSession = Depends(get_session)) -> 
 
 
 async def get_stream_user(current_user: User = Depends(get_current_user)) -> User:
-    """Use normal bearer authentication for the SSE endpoint."""
+    """Use the normal opaque cookie session for the SSE endpoint."""
     return current_user
 
 

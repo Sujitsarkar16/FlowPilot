@@ -31,7 +31,6 @@ describe("standing-order API client", () => {
     const client = createApiClient({
       baseUrl: "https://api.example.test",
       fetchFn,
-      getAccessToken: async () => "token",
     });
     await client.listStandingOrders();
     await client.createStandingOrder({ instruction: order.instruction });

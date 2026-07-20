@@ -21,6 +21,15 @@ class UserRepository:
             User | None, await self.session.scalar(select(User).where(User.auth_subject == subject))
         )
 
+    async def get_by_email(self, email: str) -> User | None:
+        return cast(User | None, await self.session.scalar(select(User).where(User.email == email)))
+
+    async def get_by_google_subject(self, subject: str) -> User | None:
+        return cast(
+            User | None,
+            await self.session.scalar(select(User).where(User.google_subject == subject)),
+        )
+
     async def add(self, user: User) -> User:
         self.session.add(user)
         await self.session.flush()

@@ -132,6 +132,17 @@ npm run build
 - [FlowPilot use-case playbook](docs/14-flowpilot-use-case-playbook.md)
 - [Local development guide](docs/LOCAL_DEVELOPMENT.md)
 
+## Free demo deployment
+
+The included deployment configuration uses Cloudflare Workers for the Next.js frontend and a Render Free Web Service for the FastAPI backend. It retains Supabase for Postgres and Auth.
+
+1. In Render, create a Blueprint from this repository. `render.yaml` builds `apps/api/Dockerfile`; provide `DATABASE_URL`, `SUPABASE_URL`, `ENCRYPTION_KEY`, and `CORS_ORIGINS` in the Render UI. Add connector and OAuth settings from `apps/api/.env.example` only when those integrations are enabled.
+2. Run `alembic upgrade head` against the production Supabase database before the first release; production containers deliberately do not apply migrations automatically.
+3. In `apps/web`, set `NEXT_PUBLIC_API_URL` to the Render HTTPS URL and set both Supabase public values. Supply these as Cloudflare build and Worker runtime variables, then run `npm run cf:deploy` after authenticating Wrangler.
+4. Set the Render URL in Supabase allowed redirect URLs and the Cloudflare URL in `CORS_ORIGINS`; update Google/GitHub OAuth callbacks and `CONNECTION_SUCCESS_URL` if connector OAuth is enabled.
+
+Render Free does not provide a separate persistent worker. `RUN_EMBEDDED_WORKERS=true` starts FlowPilot's action and Gmail workers in the FastAPI process while the service is awake. Free services sleep after inactivity, so scheduled work can be delayed until the next request. Use dedicated background workers before relying on 24/7 automation.
+
 ## Current boundaries
 
 FlowPilot is a demo MVP. OAuth configuration, deployment credentials, demo data, and all environment files are intentionally local-only. The simulated Salary Autopilot is designed to demonstrate safe planning—not banking, purchases, or investment execution.

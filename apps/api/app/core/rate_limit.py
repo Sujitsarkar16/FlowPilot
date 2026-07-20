@@ -60,6 +60,8 @@ class RateLimiter:
 
 
 def rate_limit_bucket(path: str) -> str | None:
+    if path.startswith("/api/v1/auth/"):
+        return "auth"
     if path == "/api/v1/events/manual":
         return "manual"
     if path.startswith(("/api/v1/webhooks/", "/api/v1/mock-bank/")):
@@ -74,6 +76,7 @@ def rate_limiter_from_settings(settings: Settings) -> RateLimiter:
     return RateLimiter(
         {
             "manual": RateLimitRule(settings.rate_limit_manual_events, window),
+            "auth": RateLimitRule(settings.rate_limit_auth_requests, window),
             "webhook": RateLimitRule(settings.rate_limit_webhooks, window),
             "ai": RateLimitRule(settings.rate_limit_ai_requests, window),
         }

@@ -23,8 +23,8 @@ export function usePlanStream(planId: string | null | undefined) {
 
     function connect() {
       setState("connecting");
-      // EventSource cannot attach an Authorization header. The same-origin route proxy reads
-      // the cookie-backed session and forwards its bearer token server-side.
+      // EventSource cannot attach an Authorization header. The same-origin proxy forwards
+      // the HTTP-only local session cookie to the API without exposing it to browser code.
       const url = `/api/plans/${planId}/stream`;
       const es = new EventSource(url, { withCredentials: true });
       esRef.current = es;

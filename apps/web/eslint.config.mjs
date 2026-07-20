@@ -11,6 +11,7 @@ const config = [
   {
     ignores: [
       ".next/**",
+      ".open-next/**",
       "next-env.d.ts",
       "node_modules/**",
       "playwright-report/**",

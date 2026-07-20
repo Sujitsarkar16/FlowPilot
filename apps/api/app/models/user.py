@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from app.models.personal_context import PersonalContext
     from app.models.plan import Plan
     from app.models.standing_order import StandingOrder
+    from app.models.user_session import UserSession
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -23,13 +24,17 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     auth_subject: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(320), unique=True)
     display_name: Mapped[str | None] = mapped_column(String(120))
+    password_hash: Mapped[str | None] = mapped_column(String(255))
+    google_subject: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
     role: Mapped[UserRole] = mapped_column(
         db_enum(UserRole), default=UserRole.MEMBER, nullable=False
     )
     default_autonomy: Mapped[AutonomyLevel] = mapped_column(
         db_enum(AutonomyLevel), default=AutonomyLevel.SUGGEST, nullable=False
     )
-    autonomy_preferences: Mapped[dict[str, str]] = mapped_column(jsonb, default=dict, nullable=False)
+    autonomy_preferences: Mapped[dict[str, str]] = mapped_column(
+        jsonb, default=dict, nullable=False
+    )
     daily_message_cap: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
     daily_calendar_cap: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
 
@@ -38,3 +43,4 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     raw_events: Mapped[list["RawEvent"]] = relationship(back_populates="user")
     plans: Mapped[list["Plan"]] = relationship(back_populates="user")
     personal_context: Mapped[list["PersonalContext"]] = relationship(back_populates="user")
+    sessions: Mapped[list["UserSession"]] = relationship(back_populates="user")

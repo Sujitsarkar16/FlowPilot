@@ -6,6 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "npm run cf:build && wrangler dev",
+    "cf:deploy": "npm run cf:build && opennextjs-cloudflare deploy",
     "lint": "eslint .",
     "format": "prettier . --check",
     "format:write": "prettier . --write",
@@ -17,8 +20,6 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "1.1.2",
-    "@supabase/ssr": "^0.12.3",
-    "@supabase/supabase-js": "^2.110.7",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "lucide-react": "0.468.0",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.2.0",
+    "@opennextjs/cloudflare": "1.20.1",
     "@playwright/test": "1.51.1",
     "@testing-library/dom": "10.4.0",
     "@testing-library/jest-dom": "6.6.3",
@@ -47,6 +49,7 @@
     "prettier": "3.4.2",
     "tailwindcss": "3.4.17",
     "typescript": "5.7.3",
-    "vitest": "3.0.7"
+    "vitest": "3.0.7",
+    "wrangler": "4.112.0"
   }
 }

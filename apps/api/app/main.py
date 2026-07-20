@@ -1,5 +1,6 @@
 """FlowPilot API application entry point."""
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -13,6 +14,7 @@ from starlette.responses import PlainTextResponse, Response
 
 from app.api.routes.actions import router as actions_router
 from app.api.routes.approvals import router as approvals_router
+from app.api.routes.auth import router as auth_router
 from app.api.routes.connections import router as connections_router
 from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.events import router as events_router
@@ -30,7 +32,9 @@ from app.core.logging import configure_logging, request_id_context, route_contex
 from app.core.metrics import metrics
 from app.core.rate_limit import RateLimitMiddleware, rate_limiter_from_settings
 from app.core.security_headers import RequestBodyLimitMiddleware, SecurityHeadersMiddleware
-from app.db.session import dispose_engine
+from app.db.session import dispose_engine, get_session_factory
+from app.workers.gmail_poll_worker import GmailPollWorker
+from app.workers.main import DurableWorker
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +62,28 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Set up logging and release pooled resources at process boundaries."""
+    """Set up logging, optional embedded workers, and pooled resources."""
     configure_logging()
-    app.state.settings = get_settings()
+    settings = get_settings()
+    app.state.settings = settings
+    workers: tuple[DurableWorker | GmailPollWorker, ...] = ()
+    worker_tasks: tuple[asyncio.Task[None], ...] = ()
+    if settings.embedded_workers:
+        # ponytail: Render Free sleeps idle web services; move workers to dedicated services for 24/7 jobs.
+        workers = (DurableWorker(get_session_factory()), GmailPollWorker(get_session_factory()))
+        worker_tasks = tuple(
+            asyncio.create_task(worker.run(), name=worker.worker_id) for worker in workers
+        )
+        logger.warning("starting workers in the API process")
     try:
         yield
     finally:
+        for worker in workers:
+            worker.stop()
+        for task in worker_tasks:
+            task.cancel()
+        if worker_tasks:
+            await asyncio.gather(*worker_tasks, return_exceptions=True)
         await dispose_engine()
 
 
@@ -90,6 +110,7 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
     )
+    api.include_router(auth_router)
     api.include_router(me_router)
     api.include_router(events_router)
     api.include_router(mock_bank_router)

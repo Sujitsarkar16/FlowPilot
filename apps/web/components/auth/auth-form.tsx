@@ -4,9 +4,16 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-import { createClient } from "@/lib/supabase/client";
-
 type AuthMode = "sign-in" | "sign-up";
+
+function apiUrl() {
+  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+}
+
+async function errorMessage(response: Response) {
+  const body = (await response.json().catch(() => null)) as { detail?: string } | null;
+  return body?.detail ?? "Unable to authenticate.";
+}
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const searchParams = useSearchParams();
@@ -16,26 +23,23 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [submitting, setSubmitting] = useState(false);
   const isSignUp = mode === "sign-up";
   const requestedPath = searchParams?.get("returnTo") ?? "/dashboard";
-  const returnTo = requestedPath.startsWith("/") && !requestedPath.startsWith("//") ? requestedPath : "/dashboard";
+  const returnTo =
+    requestedPath.startsWith("/") && !requestedPath.startsWith("//") ? requestedPath : "/dashboard";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setMessage("");
     try {
-      const supabase = createClient();
-      const result = isSignUp
-        ? await supabase.auth.signUp({
-            email,
-            password,
-            options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}` },
-          })
-        : await supabase.auth.signInWithPassword({ email, password });
-      if (result.error) throw result.error;
-      if (isSignUp && !result.data.session) {
-        setMessage("Check your email to confirm your account, then sign in.");
-        return;
-      }
+      const baseUrl = apiUrl();
+      if (!baseUrl) throw new Error("The API URL is not configured.");
+      const response = await fetch(`${baseUrl}/api/v1/auth/${isSignUp ? "register" : "login"}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!response.ok) throw new Error(await errorMessage(response));
       window.location.assign(returnTo);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to authenticate.");
@@ -44,20 +48,15 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     }
   }
 
-  async function signInWithGoogle() {
-    setSubmitting(true);
-    setMessage("");
-    try {
-      const { data, error } = await createClient().auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}` },
-      });
-      if (error || !data.url) throw error ?? new Error("Google sign-in could not be started.");
-      window.location.assign(data.url);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to start Google sign-in.");
-      setSubmitting(false);
+  function signInWithGoogle() {
+    const baseUrl = apiUrl();
+    if (!baseUrl) {
+      setMessage("The API URL is not configured.");
+      return;
     }
+    window.location.assign(
+      `${baseUrl}/api/v1/auth/google/start?return_to=${encodeURIComponent(returnTo)}`,
+    );
   }
 
   return (
@@ -80,14 +79,18 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           autoComplete={isSignUp ? "new-password" : "current-password"}
           className="mt-1.5 h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
           id="password"
-          minLength={8}
+          minLength={12}
           onChange={(event) => setPassword(event.target.value)}
           required
           type="password"
           value={password}
         />
       </label>
-      {message ? <p className="text-sm text-rose-600" role="alert">{message}</p> : null}
+      {message ? (
+        <p className="text-sm text-rose-600" role="alert">
+          {message}
+        </p>
+      ) : null}
       <button
         className="flex h-11 w-full items-center justify-center rounded-lg bg-indigo-600 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-60"
         disabled={submitting}
@@ -105,7 +108,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       </button>
       <p className="text-center text-sm text-slate-500">
         {isSignUp ? "Already have an account?" : "Need an account?"}{" "}
-        <Link className="font-semibold text-indigo-600 hover:text-indigo-500" href={isSignUp ? "/login" : "/sign-up"}>
+        <Link
+          className="font-semibold text-indigo-600 hover:text-indigo-500"
+          href={isSignUp ? "/login" : "/sign-up"}
+        >
           {isSignUp ? "Sign in" : "Sign up"}
         </Link>
       </p>

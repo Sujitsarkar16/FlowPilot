@@ -25,15 +25,27 @@ class Settings(BaseSettings):
     migrations_database_url: str | None = None
     database_pool_size: int = Field(default=5, ge=1, le=50)
     database_max_overflow: int = Field(default=10, ge=0, le=50)
+    embedded_workers: bool = Field(default=False, validation_alias="RUN_EMBEDDED_WORKERS")
     cors_origins: tuple[AnyHttpUrl, ...] = ()
 
-    supabase_url: AnyHttpUrl | None = None
-    supabase_jwks_url: AnyHttpUrl | None = None
-    supabase_jwt_audience: str = "authenticated"
+    auth_app_url: AnyHttpUrl = AnyHttpUrl("http://localhost:3000")
+    auth_google_client_id: str | None = None
+    auth_google_client_secret: SecretStr | None = None
+    auth_google_redirect_uri: AnyHttpUrl = AnyHttpUrl(
+        "http://localhost:8000/api/v1/auth/google/callback"
+    )
+    auth_session_secret: SecretStr | None = None
+    auth_state_secret: SecretStr | None = None
+    auth_cookie_domain: str | None = None
+    auth_cookie_name: str = "flowpilot_session"
+    auth_cookie_secure: bool = False
+    auth_session_lifetime_seconds: int = Field(default=2_592_000, ge=300, le=31_536_000)
+    auth_google_state_lifetime_seconds: int = Field(default=600, ge=60, le=3_600)
     encryption_key: SecretStr | None = None
     encryption_previous_keys: tuple[SecretStr, ...] = ()
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     rate_limit_manual_events: int = Field(default=30, ge=1, le=10000)
+    rate_limit_auth_requests: int = Field(default=10, ge=1, le=10000)
     rate_limit_webhooks: int = Field(default=60, ge=1, le=10000)
     rate_limit_ai_requests: int = Field(default=10, ge=1, le=10000)
     request_body_limit_bytes: int = Field(default=1_048_576, ge=1024, le=52_428_800)
@@ -67,6 +79,11 @@ class Settings(BaseSettings):
             return tuple(origin.strip() for origin in value.split(",") if origin.strip())
         return value
 
+    @field_validator("auth_cookie_domain", mode="before")
+    @classmethod
+    def normalize_cookie_domain(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
     @field_validator("encryption_previous_keys", mode="before")
     @classmethod
     def parse_previous_keys(cls, value: object) -> object:
@@ -92,10 +109,23 @@ class Settings(BaseSettings):
         if self.client_availability_start_hour >= self.client_availability_end_hour:
             raise ValueError("client availability start must precede its end")
         if self.environment == "production":
-            if self.supabase_url is None:
-                raise ValueError("production requires SUPABASE_URL")
             if not self.encryption_key:
                 raise ValueError("production requires ENCRYPTION_KEY")
+            if (
+                self.auth_session_secret is None
+                or not self.auth_session_secret.get_secret_value()
+                or self.auth_state_secret is None
+                or not self.auth_state_secret.get_secret_value()
+            ):
+                raise ValueError("production requires local authentication secrets")
+            if (
+                not self.auth_google_client_id
+                or self.auth_google_client_secret is None
+                or not self.auth_google_client_secret.get_secret_value()
+            ):
+                raise ValueError("production requires Google authentication credentials")
+            if not self.auth_cookie_secure:
+                raise ValueError("production requires AUTH_COOKIE_SECURE=true")
         return self
 
 

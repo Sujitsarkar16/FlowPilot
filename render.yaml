@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: flowpilot-api
+    runtime: docker
+    plan: free
+    dockerContext: .
+    dockerfilePath: apps/api/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: FLOWPILOT_ENV
+        value: production
+      - key: RUN_EMBEDDED_WORKERS
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

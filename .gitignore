@@ -24,6 +24,10 @@ __pycache__/
 # JavaScript
 node_modules/
 .next/
+.open-next/
+.wrangler/
+.dev.vars
+.dev.vars.*
 out/
 *.tsbuildinfo
 

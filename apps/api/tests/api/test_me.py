@@ -1,41 +1,67 @@
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import auth as auth_dependencies
 from app.api.dependencies.auth import get_current_admin, get_current_user
 from app.api.routes.me import router
+from app.core.config import Settings
 from app.models.enums import AutonomyLevel, UserRole
 from app.models.user import User
+from app.models.user_session import UserSession
+from app.services.local_auth import hash_session_token
 
 
 @pytest.mark.asyncio
-async def test_verified_subjects_create_distinct_local_users(session: object) -> None:
-    request = Request({"type": "http", "method": "GET", "path": "/api/v1/me", "headers": []})
-    first = await get_current_user(
-        request,
-        {"sub": "user-one", "email": "one@example.com", "user_metadata": {"name": "One"}},
-        session,  # type: ignore[arg-type]
+async def test_distinct_local_sessions_resolve_to_distinct_users(session, monkeypatch) -> None:
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql+asyncpg://postgres:password@db.example.test:5432/flowpilot",
+        auth_session_secret="session-secret",
     )
-    second = await get_current_user(
-        request,
-        {"sub": "user-two", "email": "two@example.com", "user_metadata": {"name": "Two"}},
-        session,  # type: ignore[arg-type]
+    monkeypatch.setattr(auth_dependencies, "get_settings", lambda: settings)
+    first = User(auth_subject="local:first", email="one@example.com")
+    second = User(auth_subject="google:second", email="two@example.com", google_subject="second")
+    session.add_all([first, second])
+    await session.flush()
+    first_token, second_token = "first-session", "second-session"
+    session.add_all(
+        [
+            UserSession(
+                user_id=first.id,
+                token_hash=hash_session_token(first_token, settings),
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
+            ),
+            UserSession(
+                user_id=second.id,
+                token_hash=hash_session_token(second_token, settings),
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
+            ),
+        ]
     )
+    await session.commit()
 
-    assert (first.auth_subject, first.email, first.display_name, first.role) == (
-        "user-one",
-        "one@example.com",
-        "One",
-        UserRole.MEMBER,
+    first_request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/api/v1/me",
+            "headers": [(b"cookie", b"flowpilot_session=first-session")],
+        }
     )
-    assert (second.auth_subject, second.email, second.display_name) == (
-        "user-two",
-        "two@example.com",
-        "Two",
+    second_request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/api/v1/me",
+            "headers": [(b"cookie", b"flowpilot_session=second-session")],
+        }
     )
-    assert first.id != second.id
+    assert await get_current_user(first_request, session) is first
+    assert await get_current_user(second_request, session) is second
     with pytest.raises(HTTPException, match="Administrator role required"):
         await get_current_admin(first)
 
@@ -44,7 +70,7 @@ def test_me_returns_only_safe_profile_fields() -> None:
     app = FastAPI()
     user = User(
         id=uuid4(),
-        auth_subject="user-123",
+        auth_subject="local:user-123",
         email="person@example.com",
         display_name="Person",
         role=UserRole.MEMBER,

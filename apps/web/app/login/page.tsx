@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { AuthForm } from "@/components/auth/auth-form";
 
 export default function LoginPage() {
@@ -10,7 +12,9 @@ export default function LoginPage() {
             Sign in to your workspace
           </h1>
         </div>
-        <AuthForm mode="sign-in" />
+        <Suspense fallback={<p className="text-center text-sm text-slate-500">Loading…</p>}>
+          <AuthForm mode="sign-in" />
+        </Suspense>
       </section>
     </main>
   );

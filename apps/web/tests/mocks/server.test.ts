@@ -12,7 +12,6 @@ describe("test API utilities", () => {
     const api = createApiClient({
       baseUrl: "http://flowpilot.test",
       fetchFn: server.fetch,
-      getAccessToken: async () => null,
     });
     await expect(api.getDashboardSummary()).resolves.toMatchObject({ events_today: 1 });
     expect(server.fetch).toHaveBeenCalledOnce();

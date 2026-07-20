@@ -4,8 +4,6 @@ import Link from "next/link";
 import { LogOut, Settings, UserRound } from "lucide-react";
 import { useState } from "react";
 
-import { createClient } from "@/lib/supabase/client";
-
 export function UserMenu() {
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -13,7 +11,9 @@ export function UserMenu() {
   async function signOut() {
     setSigningOut(true);
     try {
-      await createClient().auth.signOut();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+      if (apiUrl)
+        await fetch(`${apiUrl}/api/v1/auth/logout`, { method: "POST", credentials: "include" });
     } finally {
       window.location.assign("/login");
     }

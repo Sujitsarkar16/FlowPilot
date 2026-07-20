@@ -12,6 +12,7 @@ from app.models.personal_context import PersonalContext
 from app.models.plan import Plan
 from app.models.standing_order import StandingOrder
 from app.models.user import User
+from app.models.user_session import UserSession
 
 __all__ = [
     "Action",
@@ -29,4 +30,5 @@ __all__ = [
     "RawEvent",
     "StandingOrder",
     "User",
+    "UserSession",
 ]

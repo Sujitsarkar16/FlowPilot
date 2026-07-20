@@ -1,7 +1,6 @@
 "use client";
 
 import { ApiAbortError, ApiError, ApiTimeoutError } from "@/lib/api/errors";
-import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import type {
   Approval,
   ApiClient,
@@ -35,7 +34,6 @@ interface ApiClientOptions {
   baseUrl?: string;
   defaultTimeoutMs?: number;
   fetchFn?: typeof fetch;
-  getAccessToken?: () => Promise<string | null>;
   onUnauthorized?: () => Promise<void> | void;
 }
 
@@ -65,24 +63,12 @@ async function jsonBody(response: Response) {
   }
 }
 
-async function browserAccessToken() {
-  const {
-    data: { session },
-  } = await createSupabaseClient().auth.getSession();
-  return session?.access_token ?? null;
-}
-
 async function browserUnauthorized() {
-  try {
-    await createSupabaseClient().auth.signOut();
-  } finally {
-    if (typeof window !== "undefined") window.location.assign("/login");
-  }
+  if (typeof window !== "undefined") window.location.assign("/login");
 }
 
 export function createApiClient(options: ApiClientOptions = {}): ApiClient {
   const fetchFn = options.fetchFn ?? fetch;
-  const getAccessToken = options.getAccessToken ?? browserAccessToken;
   const onUnauthorized = options.onUnauthorized ?? browserUnauthorized;
   const request = async <T>(path: string, requestOptions: ApiRequestOptions = {}) => {
     const baseUrl = options.baseUrl ?? process.env.NEXT_PUBLIC_API_URL;
@@ -105,8 +91,6 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
     try {
       const headers = new Headers(requestOptions.headers);
       headers.set("Accept", "application/json");
-      const token = await getAccessToken();
-      if (token) headers.set("Authorization", `Bearer ${token}`);
       const isFormData = typeof FormData !== "undefined" && requestOptions.body instanceof FormData;
       if (requestOptions.body !== undefined && !isFormData)
         headers.set("Content-Type", "application/json");
@@ -114,6 +98,7 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
         fetchFn(`${baseUrl.replace(/\/$/, "")}${path}`, {
           method: requestOptions.method ?? "GET",
           headers,
+          credentials: "include",
           signal: controller.signal,
           body:
             requestOptions.body === undefined || isFormData

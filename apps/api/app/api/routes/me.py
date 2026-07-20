@@ -26,5 +26,5 @@ class CurrentUserResponse(BaseModel):
 
 @router.get("/me", response_model=CurrentUserResponse)
 async def get_me(current_user: User = Depends(get_current_user)) -> User:
-    """Return the profile bound to the bearer token's verified subject."""
+    """Return the profile bound to the authenticated local session."""
     return current_user

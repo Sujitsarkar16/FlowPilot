@@ -56,6 +56,16 @@ Next.js PWA ── authenticated API calls ──▶ FastAPI
                          Google · GitHub · Open-Meteo · Telegram · internal documents
 ```
 
+## Built with Codex & GPT-5.6
+
+FlowPilot was developed with an AI-assisted engineering workflow:
+
+- **Codex** accelerated hands-on implementation: scaffolding features, making targeted frontend and backend changes, and tightening tests, types, linting, and developer documentation.
+- **GPT-5.6** provided high-context engineering support across the monorepo: reasoning through product requirements, system boundaries, workflow behavior, safety controls, and implementation trade-offs.
+- **Human contributors** retained ownership of every product and security decision. They reviewed and validated generated changes, especially the deterministic policy engine, approval gates, connector boundaries, and demo constraints.
+
+Codex and GPT-5.6 were development collaborators, not autonomous FlowPilot operators. The shipped application preserves its provider-neutral AI adapter and never lets a model bypass validated schemas, deterministic policy, or explicit approval for consequential actions.
+
 ## Repository layout
 
 ```text

@@ -1,6 +1,5 @@
 """Polling ingestion for relevant Gmail messages."""
 
-import asyncio
 import logging
 from dataclasses import dataclass
 
@@ -75,10 +74,14 @@ class GmailSyncService:
                 )
             )
         )
-        return list(
-            await asyncio.gather(*[self.sync_connection(conn) for conn in connections],
-                                  return_exceptions=False)
-        )
+        # A single AsyncSession cannot be shared across concurrent tasks, so poll each
+        # connection sequentially. ponytail: O(n) connections per cycle; acceptable while a
+        # single poll worker serves a small user base — give each connection its own session
+        # to parallelize.
+        results: list[GmailSyncResult] = []
+        for connection in connections:
+            results.append(await self.sync_connection(connection))
+        return results
 
     async def sync_connection(
         self, connection: Connection, *, relevance_filter: GmailRelevanceFilter | None = None

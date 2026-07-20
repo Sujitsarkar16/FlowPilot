@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarDays, CheckSquare, Home, ListTodo, Plug, Settings, Shield } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -30,10 +31,17 @@ export function Sidebar() {
     <aside className="sticky top-0 hidden h-screen w-72 shrink-0 flex-col border-r border-slate-200/80 bg-white p-5 md:flex">
       <Link
         aria-label="FlowPilot dashboard home"
-        className="px-3 py-2 text-xl font-bold tracking-tight text-slate-950"
+        className="flex items-center gap-2.5 px-3 py-2"
         href="/dashboard"
       >
-        Flow<span className="text-indigo-600">Pilot</span>
+        <Image
+          alt="FlowPilot"
+          className="h-12 w-12 object-contain"
+          height={48}
+          priority
+          src="/flowpilot-logo.png"
+          width={48}
+        />
       </Link>
       <p className="px-3 pb-6 pt-1 text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
         Personal control centre

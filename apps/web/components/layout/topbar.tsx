@@ -1,11 +1,27 @@
 import { Bell } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 import { UserMenu } from "@/components/layout/user-menu";
 
 export function Topbar() {
   return (
     <header className="flex min-h-[4.5rem] items-center justify-between border-b border-slate-200/80 bg-white px-4 sm:px-6 lg:px-8">
-      <p className="flex items-center text-sm font-medium text-slate-600">
+      <Link
+        aria-label="FlowPilot dashboard home"
+        className="flex items-center md:hidden"
+        href="/dashboard"
+      >
+        <Image
+          alt="FlowPilot"
+          className="h-32 w-32 object-contain"
+          height={48}
+          priority
+          src="/flowpilot-logo.png"
+          width={48}
+        />
+      </Link>
+      <p className="hidden items-center text-sm font-medium text-slate-600 md:flex">
         <span aria-hidden="true" className="mr-2 h-2 w-2 rounded-full bg-emerald-500" />
         Workspace protected
       </p>

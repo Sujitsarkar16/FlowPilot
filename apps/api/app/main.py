@@ -1,6 +1,5 @@
 """FlowPilot API application entry point."""
 
-import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -32,9 +31,7 @@ from app.core.logging import configure_logging, request_id_context, route_contex
 from app.core.metrics import metrics
 from app.core.rate_limit import RateLimitMiddleware, rate_limiter_from_settings
 from app.core.security_headers import RequestBodyLimitMiddleware, SecurityHeadersMiddleware
-from app.db.session import dispose_engine, get_session_factory
-from app.workers.gmail_poll_worker import GmailPollWorker
-from app.workers.main import DurableWorker
+from app.db.session import dispose_engine
 
 logger = logging.getLogger(__name__)
 
@@ -62,28 +59,12 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Set up logging, optional embedded workers, and pooled resources."""
+    """Set up logging and release pooled resources on shutdown."""
     configure_logging()
-    settings = get_settings()
-    app.state.settings = settings
-    workers: tuple[DurableWorker | GmailPollWorker, ...] = ()
-    worker_tasks: tuple[asyncio.Task[None], ...] = ()
-    if settings.embedded_workers:
-        # ponytail: Render Free sleeps idle web services; move workers to dedicated services for 24/7 jobs.
-        workers = (DurableWorker(get_session_factory()), GmailPollWorker(get_session_factory()))
-        worker_tasks = tuple(
-            asyncio.create_task(worker.run(), name=worker.worker_id) for worker in workers
-        )
-        logger.warning("starting workers in the API process")
+    app.state.settings = get_settings()
     try:
         yield
     finally:
-        for worker in workers:
-            worker.stop()
-        for task in worker_tasks:
-            task.cancel()
-        if worker_tasks:
-            await asyncio.gather(*worker_tasks, return_exceptions=True)
         await dispose_engine()
 
 

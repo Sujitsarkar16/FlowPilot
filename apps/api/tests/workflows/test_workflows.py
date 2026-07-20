@@ -78,3 +78,21 @@ def test_templates_only_emit_matching_actions_with_explicit_dependencies() -> No
     assert [action.action_type for action in subscription.ordered_actions] == [
         "subscription.check_renewal"
     ]
+
+
+def test_selecting_an_upload_pulls_in_its_document_producer() -> None:
+    # A rule that requests the packing-checklist upload but omits generate_documents must still
+    # produce a runnable plan: the upload reads the generated document at execution time.
+    travel = build_travel_workflow(
+        event(LifeEventType.TRAVEL_BOOKED),
+        rule(
+            LifeEventType.TRAVEL_BOOKED,
+            ["travel.create_folder", "travel.get_weather", "travel.upload_packing_checklist"],
+        ),
+    )
+    action_types = {action.action_type for action in travel.ordered_actions}
+    assert "travel.generate_documents" in action_types
+    assert (
+        "travel.generate_documents"
+        in travel.action_by_key["travel.upload_packing_checklist"].depends_on
+    )

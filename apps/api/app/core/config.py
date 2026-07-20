@@ -25,7 +25,6 @@ class Settings(BaseSettings):
     migrations_database_url: str | None = None
     database_pool_size: int = Field(default=5, ge=1, le=50)
     database_max_overflow: int = Field(default=10, ge=0, le=50)
-    embedded_workers: bool = Field(default=False, validation_alias="RUN_EMBEDDED_WORKERS")
     cors_origins: tuple[AnyHttpUrl, ...] = ()
 
     auth_app_url: AnyHttpUrl = AnyHttpUrl("http://localhost:3000")
@@ -48,6 +47,8 @@ class Settings(BaseSettings):
     rate_limit_auth_requests: int = Field(default=10, ge=1, le=10000)
     rate_limit_webhooks: int = Field(default=60, ge=1, le=10000)
     rate_limit_ai_requests: int = Field(default=10, ge=1, le=10000)
+    # Consequential mutations that trigger real connector side effects (execute/approve/retry).
+    rate_limit_execution_requests: int = Field(default=20, ge=1, le=10000)
     request_body_limit_bytes: int = Field(default=1_048_576, ge=1024, le=52_428_800)
     event_attachment_max_bytes: int = Field(default=5_242_880, ge=1_024, le=26_214_400)
     webhook_timestamp_window_seconds: int = Field(default=300, ge=1, le=3600)

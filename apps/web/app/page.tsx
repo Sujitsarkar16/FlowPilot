@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import {
   ArrowRight,
   Check,
@@ -61,60 +62,57 @@ const steps = [
   },
 ];
 
-const plans = [
+const useCases = [
   {
-    name: "Starter",
-    description: "For building your first trusted workflows.",
-    price: "$0",
-    detail: "Free forever",
-    features: ["2 connected services", "100 monthly actions", "Approval inbox"],
+    icon: Mail,
+    title: "Turn signals into action",
+    description:
+      "Bring in requests and updates from connected tools, then turn them into a clear plan instead of another notification.",
   },
   {
-    name: "Pilot",
-    description: "For individuals who want their whole day in flow.",
-    price: "$12",
-    detail: "per month",
-    features: [
-      "Unlimited connected services",
-      "5,000 monthly actions",
-      "Custom standing orders",
-      "Priority support",
-    ],
-    highlighted: true,
+    icon: Clock3,
+    title: "Run repeatable routines",
+    description:
+      "Create standing orders for recurring work while keeping the context, status, and next step visible in one place.",
   },
   {
-    name: "Team",
-    description: "For teams automating their most important work.",
-    price: "$32",
-    detail: "per member / month",
-    features: [
-      "Everything in Pilot",
-      "Shared approval policies",
-      "Team activity history",
-      "Workspace controls",
-    ],
+    icon: CreditCard,
+    title: "Pause at important decisions",
+    description:
+      "Route sensitive or high-impact actions to review so the routine work moves quickly without giving up control.",
   },
 ];
 
-function BrandMark() {
+const safetyPoints = [
+  "Preview the proposed steps before consequential work runs.",
+  "Require approval when an action crosses your chosen boundary.",
+  "See the reason, status, and outcome for every action in the activity feed.",
+  "Adjust autonomy rules as your workflows and confidence evolve.",
+];
+
+function BrandMark({ priority = false }: { priority?: boolean }) {
   return (
-    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-lg shadow-indigo-200">
-      FP
-    </span>
+    <Image
+      alt="FlowPilot"
+      className="h-[140px] w-[140px] object-contain"
+      height={120}
+      priority={priority}
+      src="/flowpilot-logo.png"
+      width={120}
+    />
   );
 }
 
 export default function HomePage() {
   return (
     <main className="overflow-hidden bg-white text-slate-900">
-      <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur-lg">
+      <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur-lg overflow-visible">
         <nav
           className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-8"
           aria-label="Main navigation"
         >
-          <a href="#top" className="flex items-center gap-2.5" aria-label="FlowPilot home">
-            <BrandMark />
-            <span className="text-lg font-semibold tracking-tight">FlowPilot</span>
+          <a href="#top" className="flex items-center" aria-label="FlowPilot home">
+            <BrandMark priority />
           </a>
           <div className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
             <a className="transition hover:text-indigo-600" href="#features">
@@ -123,8 +121,8 @@ export default function HomePage() {
             <a className="transition hover:text-indigo-600" href="#how-it-works">
               How it works
             </a>
-            <a className="transition hover:text-indigo-600" href="#pricing">
-              Pricing
+            <a className="transition hover:text-indigo-600" href="#use-cases">
+              Use cases
             </a>
             <a className="transition hover:text-indigo-600" href="#contact">
               Contact
@@ -195,7 +193,6 @@ export default function HomePage() {
                 <aside className="hidden rounded-lg bg-slate-900 p-4 text-slate-300 sm:block">
                   <div className="flex items-center gap-2 text-sm font-semibold text-white">
                     <BrandMark />
-                    FlowPilot
                   </div>
                   <div className="mt-8 space-y-2 text-xs font-medium">
                     <p className="rounded-md bg-white/10 px-3 py-2.5 text-white">Life feed</p>
@@ -362,66 +359,57 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="pricing" className="scroll-mt-20 bg-slate-50 px-5 py-20 sm:px-8 sm:py-28">
+      <section
+        id="use-cases"
+        className="scroll-mt-20 bg-slate-50 px-5 py-20 sm:px-8 sm:py-28"
+      >
         <div className="mx-auto max-w-7xl">
-          <div className="mx-auto max-w-2xl text-center">
+          <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">
-              Simple pricing
+              Built for real routines
             </p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-              Start small. Scale when you&apos;re ready.
+              Move work forward without losing the human context.
             </h2>
             <p className="mt-5 text-lg leading-8 text-slate-600">
-              Choose a plan that matches the pace of your life and work.
+              FlowPilot coordinates the work between your tools: collecting signals, preparing a
+              plan, applying your standing instructions, and bringing you in when judgment matters.
             </p>
           </div>
-          <div className="mt-12 grid gap-5 lg:grid-cols-3 lg:items-stretch">
-            {plans.map((plan) => (
-              <article
-                key={plan.name}
-                className={`relative rounded-2xl border p-7 shadow-sm ${plan.highlighted ? "border-indigo-600 bg-indigo-600 text-white shadow-xl shadow-indigo-200" : "border-slate-200 bg-white text-slate-900"}`}
-              >
-                {plan.highlighted && (
-                  <p className="absolute -top-3 left-6 rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">
-                    Most popular
-                  </p>
-                )}
-                <h3 className="text-lg font-semibold">{plan.name}</h3>
-                <p
-                  className={`mt-2 min-h-12 text-sm leading-6 ${plan.highlighted ? "text-indigo-100" : "text-slate-600"}`}
-                >
-                  {plan.description}
-                </p>
-                <div className="mt-6 flex items-end gap-2">
-                  <span className="text-4xl font-semibold tracking-tight">{plan.price}</span>
-                  <span
-                    className={`pb-1 text-sm ${plan.highlighted ? "text-indigo-100" : "text-slate-500"}`}
-                  >
-                    {plan.detail}
-                  </span>
-                </div>
-                <a
-                  className={`mt-7 flex h-11 items-center justify-center rounded-lg text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${plan.highlighted ? "bg-white text-indigo-700 hover:bg-indigo-50 focus-visible:outline-white" : "bg-slate-950 text-white hover:bg-slate-800 focus-visible:outline-slate-950"}`}
-                  href="/login?returnTo=%2Fdashboard"
-                >
-                  Get started
-                </a>
-                <ul className="mt-7 space-y-3">
-                  {plan.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className={`flex items-start gap-2.5 text-sm ${plan.highlighted ? "text-indigo-50" : "text-slate-600"}`}
-                    >
-                      <Check
-                        className={`mt-0.5 h-4 w-4 shrink-0 ${plan.highlighted ? "text-white" : "text-emerald-600"}`}
-                        aria-hidden="true"
-                      />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            {useCases.map(({ icon: Icon, title, description }) => (
+              <article key={title} className="rounded-2xl border border-slate-200 bg-white p-7">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <h3 className="mt-5 text-lg font-semibold text-slate-950">{title}</h3>
+                <p className="mt-3 leading-7 text-slate-600">{description}</p>
               </article>
             ))}
+          </div>
+          <div className="mt-10 grid overflow-hidden rounded-3xl bg-slate-950 text-white shadow-xl lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="p-8 sm:p-10 lg:p-12">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-300">
+                Control at every step
+              </p>
+              <h3 className="mt-3 text-2xl font-semibold tracking-tight sm:text-4xl">
+                Autonomy that stays accountable.
+              </h3>
+              <p className="mt-5 leading-7 text-slate-300">
+                You decide where FlowPilot can act and where it must ask. Plans stay explainable,
+                approvals stay explicit, and completed work stays easy to audit.
+              </p>
+            </div>
+            <ul className="grid gap-3 border-t border-white/10 bg-white/[0.04] p-8 sm:p-10 lg:border-l lg:border-t-0 lg:p-12">
+              {safetyPoints.map((point) => (
+                <li key={point} className="flex gap-3 text-sm leading-6 text-slate-200">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-300">
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                  </span>
+                  {point}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </section>
@@ -457,16 +445,15 @@ export default function HomePage() {
 
       <footer className="border-t border-slate-200 px-5 py-10 sm:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center">
             <BrandMark />
-            <span className="font-semibold tracking-tight">FlowPilot</span>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-slate-500">
             <a className="transition hover:text-indigo-600" href="#features">
               Features
             </a>
-            <a className="transition hover:text-indigo-600" href="#pricing">
-              Pricing
+            <a className="transition hover:text-indigo-600" href="#use-cases">
+              Use cases
             </a>
             <a className="transition hover:text-indigo-600" href="mailto:hello@flowpilot.app">
               Contact

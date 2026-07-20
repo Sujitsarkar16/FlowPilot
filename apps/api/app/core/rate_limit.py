@@ -68,6 +68,13 @@ def rate_limit_bucket(path: str) -> str | None:
         return "webhook"
     if path.startswith("/api/v1/ai/") or path.endswith(("/interpret", "/plan")):
         return "ai"
+    # Consequential mutations that drive real connector side effects.
+    if path.startswith("/api/v1/plans/") and path.endswith(("/execute", "/promote", "/cancel")):
+        return "execution"
+    if path.startswith("/api/v1/approvals/") and path.endswith(("/approve", "/reject")):
+        return "execution"
+    if path.startswith("/api/v1/actions/") and path.endswith(("/retry", "/rollback")):
+        return "execution"
     return None
 
 
@@ -79,6 +86,7 @@ def rate_limiter_from_settings(settings: Settings) -> RateLimiter:
             "auth": RateLimitRule(settings.rate_limit_auth_requests, window),
             "webhook": RateLimitRule(settings.rate_limit_webhooks, window),
             "ai": RateLimitRule(settings.rate_limit_ai_requests, window),
+            "execution": RateLimitRule(settings.rate_limit_execution_requests, window),
         }
     )
 

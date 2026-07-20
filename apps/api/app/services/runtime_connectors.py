@@ -143,7 +143,6 @@ class RuntimeConnector(Connector):
             return await TravelTicketService(self._session, self._settings).fetch(action, event)
         if action.action_type == "subscription.check_renewal":
             return await self._subscription_renewals(action)
-        connector = await self._provider(action, event)
         if action.action_type.endswith("create_folder"):
             payload = {
                 "folder_name": self._text(input, "folder_name") or f"FlowPilot - {event.summary}",
@@ -169,7 +168,28 @@ class RuntimeConnector(Connector):
                     else event.occurred_at.isoformat()
                 ),
             }
-        return await connector.execute(action_id=action.id, idempotency_key=key, input=payload)
+        return await self._execute_google(action, event, key, payload)
+
+    async def _execute_google(
+        self, action: Action, event: LifeEvent, key: str, payload: dict[str, Any]
+    ) -> ConnectorExecutionResult:
+        """Run a Drive/Calendar call, refreshing the token once if the provider rejects it.
+
+        Google access tokens expire about hourly, so the stored token can be stale by the time a
+        queued action runs. One forced refresh and retry keeps a running plan from failing
+        mid-sequence; Drive/Calendar calls are marker-idempotent, so the retry cannot duplicate
+        work. The refreshed token is persisted, so the executor's follow-up verify() reuses it.
+        """
+        connector = await self._provider(action, event)
+        try:
+            return await connector.execute(action_id=action.id, idempotency_key=key, input=payload)
+        except ConnectorExecutionError as error:
+            if error.category is not ConnectorErrorCategory.AUTHORIZATION:
+                raise
+            connection = await self._connection(action.plan.user_id, ConnectionProvider.GOOGLE)
+            await self._get_google_token(connection, force_refresh=True)
+            connector = await self._provider(action, event)
+            return await connector.execute(action_id=action.id, idempotency_key=key, input=payload)
 
     async def _subscription_renewals(self, action: Action) -> ConnectorExecutionResult:
         connections = list(

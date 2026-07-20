@@ -244,18 +244,24 @@ async def google_callback(
         users = UserRepository(session)
         user = await users.get_by_google_subject(subject)
         if user is None:
-            if await users.get_by_email(email) is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT, detail="Use your existing sign-in method"
+            user = await users.get_by_email(email)
+            if user is not None:
+                if settings.environment != "development":
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Use your existing sign-in method",
+                    )
+                # ponytail: Local-only email linking; require password reauthentication in production.
+                user.google_subject = subject
+            else:
+                name = claims.get("name")
+                user = User(
+                    auth_subject=f"google:{subject}",
+                    email=email,
+                    display_name=name[:120] if isinstance(name, str) else None,
+                    google_subject=subject,
                 )
-            name = claims.get("name")
-            user = User(
-                auth_subject=f"google:{subject}",
-                email=email,
-                display_name=name[:120] if isinstance(name, str) else None,
-                google_subject=subject,
-            )
-            await users.add(user)
+                await users.add(user)
         else:
             user.email = email
         token = await _create_session(user, session, settings)

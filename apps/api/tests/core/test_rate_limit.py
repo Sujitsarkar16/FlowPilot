@@ -2,7 +2,34 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.core.rate_limit import RateLimiter, RateLimitExceeded, RateLimitMiddleware, RateLimitRule
+from app.core.rate_limit import (
+    RateLimiter,
+    RateLimitExceeded,
+    RateLimitMiddleware,
+    RateLimitRule,
+    rate_limit_bucket,
+)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/plans/abc/execute",
+        "/api/v1/plans/abc/promote",
+        "/api/v1/plans/abc/cancel",
+        "/api/v1/approvals/abc/approve",
+        "/api/v1/approvals/abc/reject",
+        "/api/v1/actions/abc/retry",
+        "/api/v1/actions/abc/rollback",
+    ],
+)
+def test_consequential_mutations_use_execution_bucket(path: str) -> None:
+    assert rate_limit_bucket(path) == "execution"
+
+
+def test_plan_reads_are_not_rate_limited() -> None:
+    assert rate_limit_bucket("/api/v1/plans/abc") is None
+    assert rate_limit_bucket("/api/v1/plans/abc/stream") is None
 
 
 @pytest.mark.asyncio

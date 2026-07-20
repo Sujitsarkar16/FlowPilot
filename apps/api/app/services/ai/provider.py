@@ -7,6 +7,7 @@ Uses the already-present ``httpx`` dependency and OpenRouter's OpenAI-compatible
 import asyncio
 import logging
 import random
+import re
 
 import httpx
 from pydantic import ValidationError
@@ -24,6 +25,15 @@ from app.services.ai.schemas import (
 logger = logging.getLogger(__name__)
 
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
+# Some models (e.g. MiniMax) wrap JSON in a ```json ... ``` fence even in JSON mode.
+_CODE_FENCE = re.compile(r"^\s*```(?:json)?\s*\n(?P<body>.*?)\n?\s*```\s*$", re.DOTALL)
+
+
+def _strip_code_fence(content: str) -> str:
+    """Return the JSON payload, unwrapping a single Markdown code fence if present."""
+    match = _CODE_FENCE.match(content)
+    return match.group("body") if match else content
 
 
 class OpenRouterProvider(AIProvider):
@@ -93,7 +103,8 @@ class OpenRouterProvider(AIProvider):
 
             content, usage = self._extract(response.json())
             try:
-                return StructuredResult(data=schema.model_validate_json(content), usage=usage)
+                json_text = _strip_code_fence(content)
+                return StructuredResult(data=schema.model_validate_json(json_text), usage=usage)
             except (ValidationError, ValueError) as error:
                 raise AIValidationError("AI output failed schema validation") from error
 

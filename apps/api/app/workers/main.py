@@ -118,7 +118,10 @@ def _install_signal_handlers(worker: DurableWorker) -> None:
 
 async def _main() -> None:
     configure_logging()
-    worker = DurableWorker(get_session_factory())
+    # ponytail: single-flight execution. Sibling actions of one plan finishing in parallel race
+    # on the plan row's optimistic-lock version (StaleDataError). One consumer serializes cleanly
+    # for a single-process deployment; add per-plan row locking before running multiple consumers.
+    worker = DurableWorker(get_session_factory(), concurrency=1)
     _install_signal_handlers(worker)
     await worker.run()
 
